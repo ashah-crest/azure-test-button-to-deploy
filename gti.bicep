@@ -1,5 +1,8 @@
 targetScope = 'resourceGroup'
 
+@description('Tenant ID of your Azure subscription')
+param tenantId string 
+
 @description('Location for all resources')
 param location string = resourceGroup().location
 
@@ -8,7 +11,8 @@ param appName string
 
 @description('Public URL of the ZIP package containing the Java Function')
 param functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip'
-'
+
+param storageTableContributor string = '/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
 @description('Comma-separated GTI threat list categories (empty for all)')
 param threatLists string = ''
@@ -74,7 +78,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
   name: keyVaultName
   location: location
   properties: {
-    tenantId: subscription().tenantId
+    tenantId: tenantId
     sku: {
       name: 'standard'
       family: 'A'
@@ -200,7 +204,7 @@ resource keyVaultPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2024-11-01' = 
   properties: {
     accessPolicies: [
       {
-        tenantId: subscription().tenantId
+        tenantId: tenantId
         objectId: functionApp.identity.principalId
         permissions: {
           secrets: [
@@ -210,7 +214,7 @@ resource keyVaultPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2024-11-01' = 
         }
       }
       {
-        tenantId: subscription().tenantId
+        tenantId: tenantId
         objectId: currentUserObjectId
         permissions: {
           secrets: [ 'get', 'list', 'set', 'delete' ]
@@ -227,10 +231,7 @@ resource tableStorageRoleAssignment 'Microsoft.Authorization/roleAssignments@202
   scope: storageAccount
   properties: {
     principalId: functionApp.identity.principalId
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3' // Storage Table Data Contributor
-    )
+    roleDefinitionId: storageTableContributor
   }
 }
 
