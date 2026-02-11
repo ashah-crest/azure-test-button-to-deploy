@@ -24,7 +24,7 @@
     },
     "functionPackageUrl": {
       "type": "string",
-      "defaultValue": "https://github.com/ashah-crest/azure-test-button-to-deploy/blob/main/host.zip",
+      "defaultValue": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
       "metadata": {
         "description": "Public URL of the ZIP package containing the Java Function"
       }

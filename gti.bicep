@@ -7,7 +7,8 @@ param location string = resourceGroup().location
 param appName string
 
 @description('Public URL of the ZIP package containing the Java Function')
-param functionPackageUrl string = 'https://github.com/ashah-crest/azure-test-button-to-deploy/blob/main/host.zip'
+param functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip'
+'
 
 @description('Comma-separated GTI threat list categories (empty for all)')
 param threatLists string = ''
