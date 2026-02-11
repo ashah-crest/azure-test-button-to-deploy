@@ -5,7 +5,7 @@ param location string = resourceGroup().location
 param appName string
 
 @description('Public URL of the ZIP package containing the Java Function')
-param functionPackageUrl string
+param functionPackageUrl string = 'https://github.com/ashah-crest/azure-test-button-to-deploy/blob/main/host.zip'
 
 @description('Comma-separated GTI threat list categories (empty for all)')
 param threatLists string = ''
@@ -30,7 +30,7 @@ param gtiApiToken string
 param timerSchedule string
 
 @description('Object ID of the Azure AD user executing the template to provide access to Key Vault')
-param currentUserObjectId string
+param currentUserObjectId string = ''
 
 @description('Checkpoint table name')
 param checkpointTableName string = 'ApiCheckpoints'
@@ -131,6 +131,10 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
           name: 'AzureWebJobsStorage'
           // value: storageAccount.properties.primaryEndpoints.blob
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: functionPackageUrl
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'

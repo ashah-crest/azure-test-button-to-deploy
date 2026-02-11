@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "14271346620494642249"
+      "templateHash": "6805871502488307613"
     }
   },
   "parameters": {
@@ -24,6 +24,7 @@
     },
     "functionPackageUrl": {
       "type": "string",
+      "defaultValue": "https://github.com/ashah-crest/azure-test-button-to-deploy/blob/main/host.zip",
       "metadata": {
         "description": "Public URL of the ZIP package containing the Java Function"
       }
@@ -77,6 +78,7 @@
     },
     "currentUserObjectId": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
       }
@@ -197,6 +199,10 @@
             {
               "name": "AzureWebJobsStorage",
               "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2025-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_RUN_FROM_PACKAGE",
+              "value": "[parameters('functionPackageUrl')]"
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
