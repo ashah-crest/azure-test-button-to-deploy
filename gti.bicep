@@ -1,7 +1,7 @@
 targetScope = 'resourceGroup'
 
-@description('Tenant ID of your Azure subscription')
-param tenantId string 
+@description('Tenant ID of your Azure subscription (Default: Logged-in Tenant)')
+param tenantId string = tenant().tenantId
 
 @description('Location for all resources')
 param location string = resourceGroup().location
@@ -10,7 +10,7 @@ param location string = resourceGroup().location
 param appName string
 
 @description('Public URL of the ZIP package containing the Java Function')
-param functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip'
+param functionPackageUrl string
 
 param storageTableContributor string = '/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
@@ -47,6 +47,12 @@ var storageAccountName = toLower('${appName}sa${uniqueString(resourceGroup().id)
 var functionAppName = '${appName}-func'
 var appInsightsName = '${appName}-ai'
 var keyVaultName = '${appName}-kv'
+
+/* -------------------- User Assigned Managed Identity -------------------- */
+resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'kv-defender-identity'
+  location: location
+}
 
 /* -------------------- Storage Account -------------------- */
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
@@ -136,7 +142,6 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         }
         {
           name: 'AzureWebJobsStorage'
-          // value: storageAccount.properties.primaryEndpoints.blob
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
         {
@@ -215,9 +220,9 @@ resource keyVaultPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2024-11-01' = 
       }
       {
         tenantId: tenantId
-        objectId: currentUserObjectId
+        objectId: uami.properties.principalId
         permissions: {
-          secrets: [ 'get', 'list', 'set', 'delete' ]
+          secrets: ['get','list','set','delete']
         }
       }
     ]
@@ -234,6 +239,21 @@ resource tableStorageRoleAssignment 'Microsoft.Authorization/roleAssignments@202
     roleDefinitionId: storageTableContributor
   }
 }
+
+// resource appReg 'Microsoft.Graph/applications@1.0-preview' = {
+//   name: 'defender-ioc-app'
+//   properties: {
+//     displayName: 'Defender IOC Ingestion App'
+//     signInAudience: 'AzureADMyOrg'
+//   }
+// }
+
+// resource sp 'Microsoft.Graph/servicePrincipals@1.0' = {
+//   name: appReg.properties.appId
+//   properties: {
+//     appId: appReg.properties.appId
+//   }
+// }
 
 /* -------------------- Outputs -------------------- */
 // output functionAppName string = functionApp.name
