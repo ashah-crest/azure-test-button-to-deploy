@@ -50,7 +50,7 @@ var keyVaultName = '${appName}-kv'
 
 /* -------------------- User Assigned Managed Identity -------------------- */
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'kv-defender-identity'
+  name: '${appName}-kv-defender-identity'
   location: location
 }
 
