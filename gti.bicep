@@ -42,6 +42,10 @@ param currentUserObjectId string = ''
 @description('Checkpoint table name')
 param checkpointTableName string = 'ApiCheckpoints'
 
+param clientID string
+param clientSecret string
+param applicationID string
+
 
 /* -------------------- Names -------------------- */
 var storageAccountName = toLower('${appName}sa${uniqueString(resourceGroup().id)}')
@@ -199,15 +203,15 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         }
         {
           name: 'CLIENT_ID'
-          value: '091029b1-c795-47c7-9e7a-b27dabf27e53'
+          value: clientID
         }
         {
           name: 'CLIENT_SECRET'
-          value: 'qTI8Q~qyWv6eR-e9McobQvACFAFA-_cYB45SWaNc'
+          value: clientSecret
         }
         {
           name: 'APPLICATION_ID'
-          value: '3adb963c-8e61-48e8-a06d-6dbb0dacea39'
+          value: applicationID
         }
       ]
     }
