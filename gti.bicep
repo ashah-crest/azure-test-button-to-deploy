@@ -1,24 +1,24 @@
 targetScope = 'resourceGroup'
 
 @description('Tenant ID of your Azure subscription (Default: Logged-in Tenant)')
-param tenantId string = tenant().tenantId
+var tenantId string = tenant().tenantId
 
 @description('Location for all resources')
-param location string = resourceGroup().location
+var location string = resourceGroup().location
 
 @description('Base application name')
 param appName string
 
 @description('Public URL of the ZIP package containing the Java Function')
-param functionPackageUrl string
+param functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip'
 
-param storageTableContributor string = '/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+var storageTableContributor string = '/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
 @description('Comma-separated GTI threat list categories (empty for all)')
 param threatLists string = ''
 
-@description('Historical lookback period in days for initial sync (max 7)')
-param lookBackDays string = '7'
+@description('Historical lookback period upto 7 days for initial sync (Default 7)')
+param lookBackDays string
 
 @description('Comma-separated GTI verdict level(s) from "VERDICT_BENIGN","VERDICT_UNDETECTED","VERDICT_SUSPICIOUS","VERDICT_UNKNOWN" & empty for all')
 param verdicts string = ''
@@ -40,10 +40,16 @@ param timerSchedule string
 param currentUserObjectId string = ''
 
 @description('Checkpoint table name')
-param checkpointTableName string = 'ApiCheckpoints'
+var checkpointTableName string = 'ApiCheckpoints'
 
+@description('MS Defender Application Client ID')
 param clientID string
+
+@secure()
+@description('MS Defender Application Client Secret')
 param clientSecret string
+
+@description('MS Defender Application ID')
 param applicationID string
 
 
