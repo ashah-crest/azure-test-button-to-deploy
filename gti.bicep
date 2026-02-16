@@ -242,6 +242,13 @@ resource keyVaultPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2024-11-01' = 
           secrets: ['get','list','set','delete']
         }
       }
+      {
+        tenantId: tenantId
+        objectId: currentUserObjectId
+        permissions: {
+          secrets: ['get','list','set','delete']
+        }
+      }
     ]
   }
 }
