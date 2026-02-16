@@ -4,15 +4,16 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.40.2.10011",
-      "templateHash": "1230423851625261277"
+      "version": "0.39.26.7824",
+      "templateHash": "18114210710362534533"
     }
   },
   "parameters": {
     "tenantId": {
       "type": "string",
+      "defaultValue": "[tenant().tenantId]",
       "metadata": {
-        "description": "Tenant ID of your Azure subscription"
+        "description": "Tenant ID of your Azure subscription (Default: Logged-in Tenant)"
       }
     },
     "location": {
@@ -30,7 +31,6 @@
     },
     "functionPackageUrl": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
       "metadata": {
         "description": "Public URL of the ZIP package containing the Java Function"
       }
@@ -99,6 +99,15 @@
       "metadata": {
         "description": "Checkpoint table name"
       }
+    },
+    "clientID": {
+      "type": "string"
+    },
+    "clientSecret": {
+      "type": "string"
+    },
+    "applicationID": {
+      "type": "string"
     }
   },
   "variables": {
@@ -108,6 +117,12 @@
     "keyVaultName": "[format('{0}-kv', parameters('appName'))]"
   },
   "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-kv-defender-identity', parameters('appName'))]",
+      "location": "[parameters('location')]"
+    },
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2025-01-01",
@@ -253,6 +268,18 @@
             {
               "name": "STORAGE_ACCOUNT_NAME",
               "value": "[variables('storageAccountName')]"
+            },
+            {
+              "name": "CLIENT_ID",
+              "value": "[parameters('clientID')]"
+            },
+            {
+              "name": "CLIENT_SECRET",
+              "value": "[parameters('clientSecret')]"
+            },
+            {
+              "name": "APPLICATION_ID",
+              "value": "[parameters('applicationID')]"
             }
           ]
         },
@@ -283,6 +310,18 @@
           },
           {
             "tenantId": "[parameters('tenantId')]",
+            "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-kv-defender-identity', parameters('appName'))), '2023-01-31').principalId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list",
+                "set",
+                "delete"
+              ]
+            }
+          },
+          {
+            "tenantId": "[parameters('tenantId')]",
             "objectId": "[parameters('currentUserObjectId')]",
             "permissions": {
               "secrets": [
@@ -297,13 +336,14 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
-        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-kv-defender-identity', parameters('appName')))]"
       ]
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
       "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.Web/sites', variables('functionAppName')), 'table-access')]",
       "properties": {
         "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2024-11-01', 'full').identity.principalId]",
