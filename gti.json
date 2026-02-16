@@ -1,28 +1,15 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "18114210710362534533"
+      "templateHash": "14418376834390530528"
     }
   },
   "parameters": {
-    "tenantId": {
-      "type": "string",
-      "defaultValue": "[tenant().tenantId]",
-      "metadata": {
-        "description": "Tenant ID of your Azure subscription (Default: Logged-in Tenant)"
-      }
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "metadata": {
-        "description": "Location for all resources"
-      }
-    },
     "appName": {
       "type": "string",
       "metadata": {
@@ -31,13 +18,10 @@
     },
     "functionPackageUrl": {
       "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
       "metadata": {
         "description": "Public URL of the ZIP package containing the Java Function"
       }
-    },
-    "storageTableContributor": {
-      "type": "string",
-      "defaultValue": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3"
     },
     "threatLists": {
       "type": "string",
@@ -48,9 +32,8 @@
     },
     "lookBackDays": {
       "type": "string",
-      "defaultValue": "7",
       "metadata": {
-        "description": "Historical lookback period in days for initial sync (max 7)"
+        "description": "Historical lookback period upto 7 days for initial sync (Default 7)"
       }
     },
     "verdicts": {
@@ -93,71 +76,77 @@
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
       }
     },
-    "checkpointTableName": {
+    "clientID": {
       "type": "string",
-      "defaultValue": "ApiCheckpoints",
       "metadata": {
-        "description": "Checkpoint table name"
+        "description": "MS Defender Application Client ID"
       }
     },
-    "clientID": {
-      "type": "string"
-    },
     "clientSecret": {
-      "type": "string"
+      "type": "securestring",
+      "metadata": {
+        "description": "MS Defender Application Client Secret"
+      }
     },
     "applicationID": {
-      "type": "string"
+      "type": "string",
+      "metadata": {
+        "description": "MS Defender Application ID"
+      }
     }
   },
   "variables": {
+    "tenantId": "[tenant().tenantId]",
+    "location": "[resourceGroup().location]",
+    "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+    "checkpointTableName": "ApiCheckpoints",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
     "keyVaultName": "[format('{0}-kv', parameters('appName'))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "uami": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-kv-defender-identity', parameters('appName'))]",
-      "location": "[parameters('location')]"
+      "location": "[variables('location')]"
     },
-    {
+    "storageAccount": {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2025-01-01",
       "name": "[variables('storageAccountName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "kind": "StorageV2",
       "sku": {
         "name": "Standard_LRS"
       }
     },
-    {
+    "checkpointTable": {
       "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
       "apiVersion": "2025-01-01",
-      "name": "[format('{0}/default/{1}', variables('storageAccountName'), parameters('checkpointTableName'))]",
+      "name": "[format('{0}/default/{1}', variables('storageAccountName'), variables('checkpointTableName'))]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "storageAccount"
       ]
     },
-    {
+    "appInsights": {
       "type": "Microsoft.Insights/components",
       "apiVersion": "2020-02-02",
       "name": "[variables('appInsightsName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "kind": "web",
       "properties": {
         "Application_Type": "web"
       }
     },
-    {
+    "keyVault": {
       "type": "Microsoft.KeyVault/vaults",
       "apiVersion": "2024-11-01",
       "name": "[variables('keyVaultName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "properties": {
-        "tenantId": "[parameters('tenantId')]",
+        "tenantId": "[variables('tenantId')]",
         "sku": {
           "name": "standard",
           "family": "A"
@@ -166,7 +155,7 @@
         "accessPolicies": []
       }
     },
-    {
+    "keyVaultSecret": {
       "type": "Microsoft.KeyVault/vaults/secrets",
       "apiVersion": "2024-11-01",
       "name": "[format('{0}/{1}', variables('keyVaultName'), 'GtiApiToken')]",
@@ -174,14 +163,14 @@
         "value": "[parameters('gtiApiToken')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+        "keyVault"
       ]
     },
-    {
+    "hostingPlan": {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-12-01",
       "name": "[format('{0}-plan', parameters('appName'))]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "kind": "linux",
       "sku": {
         "name": "Y1",
@@ -191,11 +180,11 @@
         "reserved": true
       }
     },
-    {
+    "functionApp": {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2024-11-01",
       "name": "[variables('functionAppName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "kind": "functionapp,linux",
       "identity": {
         "type": "SystemAssigned"
@@ -223,7 +212,7 @@
             },
             {
               "name": "AzureWebJobsStorage",
-              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2025-01-01').keys[0].value)]"
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys('storageAccount', '2025-01-01').keys[0].value)]"
             },
             {
               "name": "WEBSITE_RUN_FROM_PACKAGE",
@@ -231,7 +220,7 @@
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
-              "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').InstrumentationKey]"
+              "value": "[reference('appInsights').InstrumentationKey]"
             },
             {
               "name": "LOOKBACK_DAYS",
@@ -259,11 +248,11 @@
             },
             {
               "name": "KEYVAULT_URI",
-              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), '2024-11-01').vaultUri]"
+              "value": "[reference('keyVault').vaultUri]"
             },
             {
               "name": "CHECKPOINT_TABLE_NAME",
-              "value": "[parameters('checkpointTableName')]"
+              "value": "[variables('checkpointTableName')]"
             },
             {
               "name": "STORAGE_ACCOUNT_NAME",
@@ -286,21 +275,21 @@
         "httpsOnly": true
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
-        "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('appName')))]",
-        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "appInsights",
+        "hostingPlan",
+        "keyVault",
+        "storageAccount"
       ]
     },
-    {
+    "keyVaultPolicy": {
       "type": "Microsoft.KeyVault/vaults/accessPolicies",
       "apiVersion": "2024-11-01",
       "name": "[format('{0}/{1}', variables('keyVaultName'), 'add')]",
       "properties": {
         "accessPolicies": [
           {
-            "tenantId": "[parameters('tenantId')]",
-            "objectId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2024-11-01', 'full').identity.principalId]",
+            "tenantId": "[variables('tenantId')]",
+            "objectId": "[reference('functionApp', '2024-11-01', 'full').identity.principalId]",
             "permissions": {
               "secrets": [
                 "get",
@@ -309,8 +298,8 @@
             }
           },
           {
-            "tenantId": "[parameters('tenantId')]",
-            "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-kv-defender-identity', parameters('appName'))), '2023-01-31').principalId]",
+            "tenantId": "[variables('tenantId')]",
+            "objectId": "[reference('uami').principalId]",
             "permissions": {
               "secrets": [
                 "get",
@@ -321,7 +310,7 @@
             }
           },
           {
-            "tenantId": "[parameters('tenantId')]",
+            "tenantId": "[variables('tenantId')]",
             "objectId": "[parameters('currentUserObjectId')]",
             "permissions": {
               "secrets": [
@@ -335,26 +324,26 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
-        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-kv-defender-identity', parameters('appName')))]"
+        "functionApp",
+        "keyVault",
+        "uami"
       ]
     },
-    {
+    "tableStorageRoleAssignment": {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
       "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.Web/sites', variables('functionAppName')), 'table-access')]",
       "properties": {
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2024-11-01', 'full').identity.principalId]",
-        "roleDefinitionId": "[parameters('storageTableContributor')]"
+        "principalId": "[reference('functionApp', '2024-11-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[variables('storageTableContributor')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "functionApp",
+        "storageAccount"
       ]
     }
-  ],
+  },
   "outputs": {
     "keyVaultName": {
       "type": "string",
@@ -366,7 +355,7 @@
     },
     "checkpointTable": {
       "type": "string",
-      "value": "[parameters('checkpointTableName')]"
+      "value": "[variables('checkpointTableName')]"
     }
   }
 }
