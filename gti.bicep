@@ -37,7 +37,7 @@ param gtiApiToken string
 param timerSchedule string
 
 @description('Object ID of the Azure AD user executing the template to provide access to Key Vault')
-param currentUserObjectId string = ''
+param currentUserObjectId string
 
 @description('Checkpoint table name')
 var checkpointTableName string = 'ApiCheckpoints'
