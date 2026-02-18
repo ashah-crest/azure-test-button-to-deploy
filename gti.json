@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14418376834390530528"
+      "templateHash": "16286840134014845479"
     }
   },
   "parameters": {
@@ -71,7 +71,6 @@
     },
     "currentUserObjectId": {
       "type": "string",
-      "defaultValue": "",
       "metadata": {
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
       }
@@ -100,6 +99,7 @@
     "location": "[resourceGroup().location]",
     "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
     "checkpointTableName": "ApiCheckpoints",
+    "failedIOCsTableName": "FailedIOCs",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
@@ -126,6 +126,14 @@
       "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
       "apiVersion": "2025-01-01",
       "name": "[format('{0}/default/{1}', variables('storageAccountName'), variables('checkpointTableName'))]",
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
+    "failedIOCsTable": {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/default/{1}', variables('storageAccountName'), variables('failedIOCsTableName'))]",
       "dependsOn": [
         "storageAccount"
       ]
@@ -253,6 +261,10 @@
             {
               "name": "CHECKPOINT_TABLE_NAME",
               "value": "[variables('checkpointTableName')]"
+            },
+            {
+              "name": "FAILED_IOC_TABLE_NAME",
+              "value": "[variables('failedIOCsTableName')]"
             },
             {
               "name": "STORAGE_ACCOUNT_NAME",

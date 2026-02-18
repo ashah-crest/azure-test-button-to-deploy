@@ -42,6 +42,9 @@ param currentUserObjectId string
 @description('Checkpoint table name')
 var checkpointTableName string = 'ApiCheckpoints'
 
+@description('Failed IOCs table name')
+var failedIOCsTableName string = 'FailedIOCs'
+
 @description('MS Defender Application Client ID')
 param clientID string
 
@@ -53,7 +56,6 @@ param clientSecret string
 param applicationID string
 
 
-/* -------------------- Names -------------------- */
 var storageAccountName = toLower('${appName}sa${uniqueString(resourceGroup().id)}')
 var functionAppName = '${appName}-func'
 var appInsightsName = '${appName}-ai'
@@ -78,6 +80,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
 /* -------------------- Table Storage -------------------- */
 resource checkpointTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2025-01-01' = {
   name: '${storageAccount.name}/default/${checkpointTableName}'
+}
+
+resource failedIOCsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2025-01-01' = {
+  name: '${storageAccount.name}/default/${failedIOCsTableName}'
 }
 
 /* -------------------- Application Insights -------------------- */
@@ -202,6 +208,10 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         {
           name: 'CHECKPOINT_TABLE_NAME'
           value: checkpointTableName
+        }
+        {
+          name: 'FAILED_IOC_TABLE_NAME'
+          value: failedIOCsTableName
         }
         {
           name: 'STORAGE_ACCOUNT_NAME'
