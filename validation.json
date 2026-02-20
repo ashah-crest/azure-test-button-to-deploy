@@ -26,7 +26,6 @@
     "threatLists": {
       "type": "Microsoft.Common.DropDown",
       "label": "Select Threat List Categories",
-      "defaultValue": [],
       "multiselect": true,
       "constraints": {
         "allowedValues": [
@@ -58,8 +57,7 @@
     },
     "verdicts": {
       "type": "Microsoft.Common.DropDown",
-      "label": "Select IOC Verdict Level(s)",
-      "defaultValue": [],
+      "label": "Select IOC Verdict Level(s)",,
       "multiselect": true,
       "constraints": {
         "allowedValues": [
@@ -77,7 +75,6 @@
     "severities": {
       "type": "Microsoft.Common.DropDown",
       "label": "Select IOC Severity Level(s)",
-      "defaultValue": [],
       "multiselect": true,
       "constraints": {
         "allowedValues": [
