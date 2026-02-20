@@ -1,0 +1,111 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+      {
+        "name": "appName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Application Name",
+        "toolTip": "Enter the base application name",
+        "constraints": {
+          "required": true
+        }
+      },
+      {
+        "name": "functionPackageUrl",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Function Package URL",
+        "toolTip": "Public URL of the ZIP containing the function package"
+      },
+      {
+        "name": "threatLists",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Select Threat List Categories",
+        "toolTip": "Select one or more threat list categories",
+        "multiselect": true,
+        "constraints": {
+          "allowedValues": [
+            { "label": "Ransomware", "value": "ransomware" },
+            { "label": "Malicious Network Infrastructure", "value": "malicious-network-infrastructure" },
+            { "label": "Malware", "value": "malware" },
+            { "label": "Threat Actor", "value": "threat-actor" },
+            { "label": "Daily Top Trending", "value": "trending" },
+            { "label": "Mobile", "value": "mobile" },
+            { "label": "OS X", "value": "osx" },
+            { "label": "Linux", "value": "linux" },
+            { "label": "Internet of Things", "value": "iot" },
+            { "label": "Cryptominers", "value": "cryptominer" },
+            { "label": "Phishing", "value": "phishing" },
+            { "label": "First Stage Delivery Vectors", "value": "first-stage-delivery-vectors" },
+            { "label": "Vulnerability Weaponization", "value": "vulnerability-weaponization" },
+            { "label": "Infostealers", "value": "infostealer" }
+          ]
+        }
+      },
+      {
+        "name": "verdicts",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Select IOC Verdict Levels",
+        "toolTip": "Select one or more IOC verdict levels",
+        "multiselect": true,
+        "constraints": {
+          "allowedValues": [
+            { "label": "Benign", "value": "VERDICT_BENIGN" },
+            { "label": "Undetected", "value": "VERDICT_UNDETECTED" },
+            { "label": "Suspicious", "value": "VERDICT_SUSPICIOUS" },
+            { "label": "Malicious", "value": "VERDICT_MALICIOUS" },
+            { "label": "Unknown", "value": "VERDICT_UNKNOWN" }
+          ]
+        }
+      },
+      {
+        "name": "severities",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Select IOC Severity Levels",
+        "toolTip": "Select one or more severity levels",
+        "multiselect": true,
+        "constraints": {
+          "allowedValues": [
+            { "label": "None", "value": "SEVERITY_NONE" },
+            { "label": "Low", "value": "SEVERITY_LOW" },
+            { "label": "Medium", "value": "SEVERITY_MEDIUM" },
+            { "label": "High", "value": "SEVERITY_HIGH" },
+            { "label": "Unknown", "value": "SEVERITY_UNKNOWN" }
+          ]
+        }
+      },
+      {
+        "name": "lookBackDays",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Lookback Days",
+        "toolTip": "Historical lookback period up to 7 days"
+      },
+      {
+        "name": "threatScore",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Minimum Threat Score",
+        "toolTip": "Enter minimum GTI Threat Score"
+      },
+      {
+        "name": "gtiApiToken",
+        "type": "Microsoft.Common.PasswordBox",
+        "label": "GTI API Token",
+        "toolTip": "Google Threat Intelligence API key"
+      }
+    ],
+    "steps": [],
+    "outputs": {
+      "appName": "[basics('appName')]",
+      "functionPackageUrl": "[basics('functionPackageUrl')]",
+      "threatLists": "[basics('threatLists')]",
+      "verdicts": "[basics('verdicts')]",
+      "severities": "[basics('severities')]",
+      "lookBackDays": "[basics('lookBackDays')]",
+      "threatScore": "[basics('threatScore')]",
+      "gtiApiToken": "[basics('gtiApiToken')]",
+      "location": "[location()]"
+    }
+  }
+}
