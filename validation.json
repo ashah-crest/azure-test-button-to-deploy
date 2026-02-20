@@ -57,7 +57,7 @@
     },
     "verdicts": {
       "type": "Microsoft.Common.DropDown",
-      "label": "Select IOC Verdict Level(s)",,
+      "label": "Select IOC Verdict Level(s)",
       "multiselect": true,
       "constraints": {
         "allowedValues": [
