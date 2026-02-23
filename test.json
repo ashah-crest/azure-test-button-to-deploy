@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "18342103439544728295"
+      "templateHash": "3946286873556156746"
     }
   },
   "parameters": {
@@ -95,6 +95,49 @@
     }
   },
   "variables": {
+    "copy": [
+      {
+        "name": "severityList",
+        "count": "[length(split(parameters('severities'), ','))]",
+        "input": "[trim(split(parameters('severities'), ',')[copyIndex('severityList')])]"
+      },
+      {
+        "name": "threatListArray",
+        "count": "[length(split(parameters('threatLists'), ','))]",
+        "input": "[trim(split(parameters('threatLists'), ',')[copyIndex('threatListArray')])]"
+      },
+      {
+        "name": "severityArray",
+        "count": "[length(split(parameters('severities'), ','))]",
+        "input": "[trim(split(parameters('severities'), ',')[copyIndex('severityArray')])]"
+      },
+      {
+        "name": "verdictArray",
+        "count": "[length(split(parameters('verdicts'), ','))]",
+        "input": "[trim(split(parameters('verdicts'), ',')[copyIndex('verdictArray')])]"
+      }
+    ],
+    "tenantId": "[tenant().tenantId]",
+    "location": "[resourceGroup().location]",
+    "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+    "checkpointTableName": "ApiCheckpoints",
+    "failedIOCsTableName": "FailedIOCs",
+    "allowedThreatLists": [
+      "ransomware",
+      "malicious-network-infrastructure",
+      "malware",
+      "threat-actor",
+      "trending",
+      "mobile",
+      "osx",
+      "linux",
+      "iot",
+      "cryptominer",
+      "phishing",
+      "first-stage-delivery-vectors",
+      "vulnerability-weaponization",
+      "infostealer"
+    ],
     "allowedSeverities": [
       "SEVERITY_NONE",
       "SEVERITY_LOW",
@@ -102,13 +145,18 @@
       "SEVERITY_HIGH",
       "SEVERITY_UNKNOWN"
     ],
-    "subnetArray": "[split(parameters('severities'), ',')]",
-    "invalidValues": "[filter(variables('subnetArray'), value => and(not(empty(trim(value))), not(contains(variables('allowedSeverities'), trim(value)))))]",
-    "tenantId": "[tenant().tenantId]",
-    "location": "[resourceGroup().location]",
-    "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
-    "checkpointTableName": "ApiCheckpoints",
-    "failedIOCsTableName": "FailedIOCs",
+    "allowedVerdicts": [
+      "VERDICT_BENIGN",
+      "VERDICT_UNDETECTED",
+      "VERDICT_SUSPICIOUS",
+      "VERDICT_UNKNOWN"
+    ],
+    "invalidSubnets": "[filter(variables('threatListArray'), lambda('x', and(not(empty(lambdaVariables('x'))), not(contains(variables('allowedThreatLists'), lambdaVariables('x'))))))]",
+    "invalidEnvs": "[filter(variables('severityArray'), lambda('x', and(not(empty(lambdaVariables('x'))), not(contains(variables('allowedSeverities'), lambdaVariables('x'))))))]",
+    "invalidRegions": "[filter(variables('verdictArray'), lambda('x', and(not(empty(lambdaVariables('x'))), not(contains(variables('allowedVerdicts'), lambdaVariables('x'))))))]",
+    "validateSubnets": "[if(equals(length(variables('invalidSubnets')), 0), 'ok', json(format('Invalid subnet values: {0}', join(variables('invalidSubnets'), ', '))))]",
+    "validateEnvs": "[if(equals(length(variables('invalidEnvs')), 0), 'ok', json(format('Invalid env values: {0}', join(variables('invalidEnvs'), ', '))))]",
+    "validateRegions": "[if(equals(length(variables('invalidRegions')), 0), 'ok', json(format('Invalid region values: {0}', join(variables('invalidRegions'), ', '))))]",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",

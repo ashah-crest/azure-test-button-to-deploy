@@ -55,19 +55,42 @@ param clientSecret string
 @description('MS Defender Application ID')
 param applicationID string
 
-// Static allowed list
-var allowedSeverities = [
-  'SEVERITY_NONE'
-  'SEVERITY_LOW'
-  'SEVERITY_MEDIUM'
-  'SEVERITY_HIGH'
-  'SEVERITY_UNKNOWN'
-]
-
 // Split + trim
 var severityList = [
   for s in split(severities, ','):trim(s)
 ]
+
+////////////////////
+
+// Allowed values for each parameter
+var allowedThreatLists = ['ransomware','malicious-network-infrastructure','malware','threat-actor','trending','mobile','osx','linux','iot','cryptominer','phishing','first-stage-delivery-vectors','vulnerability-weaponization','infostealer']
+
+var allowedSeverities = ['SEVERITY_NONE','SEVERITY_LOW','SEVERITY_MEDIUM','SEVERITY_HIGH','SEVERITY_UNKNOWN']
+
+var allowedVerdicts = ['VERDICT_BENIGN','VERDICT_UNDETECTED','VERDICT_SUSPICIOUS','VERDICT_UNKNOWN']
+
+// Convert comma-separated strings to arrays, trimming spaces
+var threatListArray = [for s in split(threatLists, ','): trim(s)]
+var severityArray = [for e in split(severities, ','): trim(e)]
+var verdictArray = [for r in split(verdicts, ','): trim(r)]
+
+// Find invalid values for each list (ignore empty)
+var invalidSubnets = filter(threatListArray, x => !empty(x) && !contains(allowedThreatLists, x))
+var invalidEnvs = filter(severityArray, x => !empty(x) && !contains(allowedSeverities, x))
+var invalidRegions = filter(verdictArray, x => !empty(x) && !contains(allowedVerdicts, x))
+
+var validateSubnets = length(invalidSubnets) == 0
+  ? 'ok'
+  : json('Invalid subnet values: ${join(invalidSubnets, ', ')}')
+
+var validateEnvs = length(invalidEnvs) == 0
+  ? 'ok'
+  : json('Invalid env values: ${join(invalidEnvs, ', ')}')
+
+var validateRegions = length(invalidRegions) == 0
+  ? 'ok'
+  : json('Invalid region values: ${join(invalidRegions, ', ')}')
+///////////////////
 
 var storageAccountName = toLower('${appName}sa${uniqueString(resourceGroup().id)}')
 var functionAppName = '${appName}-func'
