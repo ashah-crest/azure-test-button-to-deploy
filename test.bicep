@@ -74,77 +74,50 @@ resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = 
 
     // Pass your Bicep parameters into the script environment here
     environmentVariables: [
-      { name: 'threatLists', value: threatLists }
-      { name: 'severities', value: severities }
-      { name: 'verdicts', value: verdicts }
+      { name: 'THREAT_INPUT', value: threatLists }
+      { name: 'SEV_INPUT', value: severities }
+      { name: 'VERDICT_INPUT', value: verdicts }
     ]
 
     scriptContent: '''
-      # Split comma-separated strings
-      IFS=',' read -ra threatArr <<< "${threatLists}"
-      IFS=',' read -ra sevArr <<< "${severities}"
-      IFS=',' read -ra verArr <<< "${verdicts}"
+      # 1. Define Allowed Lists (Space-separated for easy Bash looping)
+      allowedT="ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer"
+      allowedS="SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN"
+      allowedV="VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN"
 
       invalid=()
 
-      # Helper function: exact match check
-      contains() {
-        local e
-        for e in "${1[@]}"; do
-          if [[ "$e" == "$2" ]]; then
-            return 0
-          fi
-        done
-        return 1
-      }
-
-      # Allowed lists
-      allowedT=(ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer)
-      allowedS=(SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN)
-      allowedV=(VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN)
-
-      # ===============================
-      # Validation loop for threatLists
-      # ===============================
-      for s in "${threatArr[@]}"; do
-        val=$(echo "$s" | xargs)          # trim spaces
-        val=${val//\"/}                    # remove double quotes
-        if [[ -n "$val" ]] && ! contains allowedT "$val"; then
-          invalid+=("threatLists:${val}")
+      # 2. Validation Logic
+      # We replace commas with spaces to let Bash iterate naturally
+      
+      # Validate Threats
+      for val in ${THREAT_INPUT//,/ }; do
+        if [[ ! $allowedT =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
+          invalid+=("threatLists:$val")
         fi
       done
 
-      # ===============================
-      # Validation loop for severities
-      # ===============================
-      for s in "${sevArr[@]}"; do
-        val=$(echo "$s" | xargs)
-        val=${val//\"/}
-        if [[ -n "$val" ]] && ! contains allowedS "$val"; then
-          invalid+=("severities:${val}")
+      # Validate Severities
+      for val in ${SEV_INPUT//,/ }; do
+        if [[ ! $allowedS =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
+          invalid+=("severities:$val")
         fi
       done
 
-      # ===============================
-      # Validation loop for verdicts
-      # ===============================
-      for s in "${verArr[@]}"; do
-        val=$(echo "$s" | xargs)
-        val=${val//\"/}
-        if [[ -n "$val" ]] && ! contains allowedV "$val"; then
-          invalid+=("verdicts:${val}")
+      # Validate Verdicts
+      for val in ${VERDICT_INPUT//,/ }; do
+        if [[ ! $allowedV =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
+          invalid+=("verdicts:$val")
         fi
       done
 
-      # ===============================
-      # Fail deployment if any invalid values
-      # ===============================
+      # 3. Final Check
       if [ ${#invalid[@]} -gt 0 ]; then
-        echo "Invalid GTI parameters: ${invalid[*]}"
+        echo "ERROR: The following inputs are invalid: ${invalid[*]}" >&2
         exit 1
       fi
 
-      echo "All GTI parameters are valid"
+      echo "All parameters validated successfully."
     '''
   }
 }

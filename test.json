@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "12287633845626122145"
+      "templateHash": "16079465550466298593"
     }
   },
   "parameters": {
@@ -120,19 +120,19 @@
         "forceUpdateTag": "validateGtiParamsTag",
         "environmentVariables": [
           {
-            "name": "threatLists",
+            "name": "THREAT_INPUT",
             "value": "[parameters('threatLists')]"
           },
           {
-            "name": "severities",
+            "name": "SEV_INPUT",
             "value": "[parameters('severities')]"
           },
           {
-            "name": "verdicts",
+            "name": "VERDICT_INPUT",
             "value": "[parameters('verdicts')]"
           }
         ],
-        "scriptContent": "      # Split comma-separated strings\r\n      IFS=',' read -ra threatArr <<< \"${threatLists}\"\r\n      IFS=',' read -ra sevArr <<< \"${severities}\"\r\n      IFS=',' read -ra verArr <<< \"${verdicts}\"\r\n\r\n      invalid=()\r\n\r\n      # Helper function: exact match check\r\n      contains() {\r\n        local e\r\n        for e in \"${1[@]}\"; do\r\n          if [[ \"$e\" == \"$2\" ]]; then\r\n            return 0\r\n          fi\r\n        done\r\n        return 1\r\n      }\r\n\r\n      # Allowed lists\r\n      allowedT=(ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer)\r\n      allowedS=(SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN)\r\n      allowedV=(VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN)\r\n\r\n      # ===============================\r\n      # Validation loop for threatLists\r\n      # ===============================\r\n      for s in \"${threatArr[@]}\"; do\r\n        val=$(echo \"$s\" | xargs)          # trim spaces\r\n        val=${val//\\\"/}                    # remove double quotes\r\n        if [[ -n \"$val\" ]] && ! contains allowedT \"$val\"; then\r\n          invalid+=(\"threatLists:${val}\")\r\n        fi\r\n      done\r\n\r\n      # ===============================\r\n      # Validation loop for severities\r\n      # ===============================\r\n      for s in \"${sevArr[@]}\"; do\r\n        val=$(echo \"$s\" | xargs)\r\n        val=${val//\\\"/}\r\n        if [[ -n \"$val\" ]] && ! contains allowedS \"$val\"; then\r\n          invalid+=(\"severities:${val}\")\r\n        fi\r\n      done\r\n\r\n      # ===============================\r\n      # Validation loop for verdicts\r\n      # ===============================\r\n      for s in \"${verArr[@]}\"; do\r\n        val=$(echo \"$s\" | xargs)\r\n        val=${val//\\\"/}\r\n        if [[ -n \"$val\" ]] && ! contains allowedV \"$val\"; then\r\n          invalid+=(\"verdicts:${val}\")\r\n        fi\r\n      done\r\n\r\n      # ===============================\r\n      # Fail deployment if any invalid values\r\n      # ===============================\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"Invalid GTI parameters: ${invalid[*]}\"\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All GTI parameters are valid\"\r\n    "
+        "scriptContent": "      # 1. Define Allowed Lists (Space-separated for easy Bash looping)\r\n      allowedT=\"ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer\"\r\n      allowedS=\"SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN\"\r\n      allowedV=\"VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN\"\r\n\r\n      invalid=()\r\n\r\n      # 2. Validation Logic\r\n      # We replace commas with spaces to let Bash iterate naturally\r\n      \r\n      # Validate Threats\r\n      for val in ${THREAT_INPUT//,/ }; do\r\n        if [[ ! $allowedT =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"threatLists:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validate Severities\r\n      for val in ${SEV_INPUT//,/ }; do\r\n        if [[ ! $allowedS =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"severities:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validate Verdicts\r\n      for val in ${VERDICT_INPUT//,/ }; do\r\n        if [[ ! $allowedV =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"verdicts:$val\")\r\n        fi\r\n      done\r\n\r\n      # 3. Final Check\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"ERROR: The following inputs are invalid: ${invalid[*]}\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All parameters validated successfully.\"\r\n    "
       }
     },
     "storageAccount": {
