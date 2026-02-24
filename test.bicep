@@ -72,6 +72,13 @@ resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = 
     retentionInterval: 'P1D'
     forceUpdateTag: 'validateGtiParamsTag'      // ensures script runs every deployment
 
+    // Pass your Bicep parameters into the script environment here
+    environmentVariables: [
+      { name: 'threatLists', value: threatLists }
+      { name: 'severities', value: severities }
+      { name: 'verdicts', value: verdicts }
+    ]
+
     scriptContent: '''
       # Split comma-separated strings
       IFS=',' read -ra threatArr <<< "${threatLists}"
