@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14883079697884651274"
+      "templateHash": "17382799486424479855"
     }
   },
   "parameters": {
@@ -105,7 +105,8 @@
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
-    "keyVaultName": "[format('{0}-kv', parameters('appName'))]"
+    "keyVaultName": "[format('{0}-kv', parameters('appName'))]",
+    "deploymentScriptName": "[format('{0}-ds', parameters('appName'))]"
   },
   "resources": {
     "scriptIdentity": {
@@ -117,7 +118,7 @@
     "validateAndLookup": {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2020-10-01",
-      "name": "validateGtiParams",
+      "name": "[variables('deploymentScriptName')]",
       "location": "[variables('location')]",
       "kind": "AzureCLI",
       "identity": {
@@ -131,7 +132,7 @@
         "timeout": "PT5M",
         "cleanupPreference": "OnSuccess",
         "retentionInterval": "P1D",
-        "forceUpdateTag": "validateGtiParamsTag",
+        "forceUpdateTag": "[variables('deploymentScriptName')]",
         "environmentVariables": [
           {
             "name": "THREAT_INPUT",
@@ -146,7 +147,7 @@
             "value": "[parameters('verdicts')]"
           }
         ],
-        "scriptContent": "      # Allowed Lists (Space-separated for easy Bash looping)\r\n      allowedT=\"ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer\"\r\n      allowedS=\"SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN\"\r\n      allowedV=\"VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN\"\r\n\r\n      invalid=()\r\n\r\n      # Validation Logic\r\n      # Replacing commas with spaces to let Bash iterate naturally\r\n      \r\n      # Validating Threat Lists\r\n      for val in ${THREAT_INPUT//,/ }; do\r\n        if [[ ! $allowedT =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"threatLists:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Severities\r\n      for val in ${SEV_INPUT//,/ }; do\r\n        if [[ ! $allowedS =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"severities:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Verdicts\r\n      for val in ${VERDICT_INPUT//,/ }; do\r\n        if [[ ! $allowedV =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"verdicts:$val\")\r\n        fi\r\n      done\r\n\r\n      # 3. Final Check\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"ERROR: The following inputs are invalid: ${invalid[*]}\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All parameters validated successfully.\"\r\n\r\n      # To get the Object ID of the user currently deploying via the Portal/CLI\r\n      USER_ID=$(az ad signed-in-user show --query id -o tsv)\r\n\r\n      echo \"{\\\"userObjectId\\\": \\\"$USER_ID\\\"}\" > $AZ_SCRIPTS_OUTPUT_PATH\r\n      \r\n    "
+        "scriptContent": "      # Allowed Lists (Space-separated for easy Bash looping)\r\n      allowedT=\"ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer\"\r\n      allowedS=\"SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN\"\r\n      allowedV=\"VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN\"\r\n\r\n      invalid=()\r\n\r\n      # Validation Logic\r\n      # Replacing commas with spaces to let Bash iterate naturally\r\n      \r\n      # Validating Threat Lists\r\n      for val in ${THREAT_INPUT//,/ }; do\r\n        if [[ ! $allowedT =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"threatLists:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Severities\r\n      for val in ${SEV_INPUT//,/ }; do\r\n        if [[ ! $allowedS =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"severities:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Verdicts\r\n      for val in ${VERDICT_INPUT//,/ }; do\r\n        if [[ ! $allowedV =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"verdicts:$val\")\r\n        fi\r\n      done\r\n\r\n      # 3. Final Check\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"ERROR: The following inputs are invalid: ${invalid[*]}\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All parameters validated successfully.\"\r\n\r\n      # To get the Object ID of the user currently deploying via the Portal/CLI\r\n      USER_ID=$(az ad signed-in-user show --query id -o tsv)\r\n\r\n      echo \"{\\\"userObjectId\\\": \\\"$USER_ID\\\"}\" > $AZ_SCRIPTS_OUTPUT_PATH\r\n      echo \"User ID : ${USER_ID}\"\r\n      \r\n    "
       },
       "dependsOn": [
         "scriptIdentity"
