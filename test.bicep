@@ -80,36 +80,58 @@ resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = 
 
       invalid=()
 
+      # Helper function: exact match check
+      contains() {
+        local e
+        for e in "${1[@]}"; do
+          if [[ "$e" == "$2" ]]; then
+            return 0
+          fi
+        done
+        return 1
+      }
+
       # Allowed lists
       allowedT=(ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer)
       allowedS=(SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN)
       allowedV=(VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN)
 
-      # Validate threatLists
+      # ===============================
+      # Validation loop for threatLists
+      # ===============================
       for s in "${threatArr[@]}"; do
-        val=$(echo "$s" | xargs)
-        if [[ -n "$val" && ! " ${allowedT[@]} " =~ " ${val} " ]]; then
+        val=$(echo "$s" | xargs)          # trim spaces
+        val=${val//\"/}                    # remove double quotes
+        if [[ -n "$val" ]] && ! contains allowedT "$val"; then
           invalid+=("threatLists:${val}")
         fi
       done
 
-      # Validate severities
+      # ===============================
+      # Validation loop for severities
+      # ===============================
       for s in "${sevArr[@]}"; do
         val=$(echo "$s" | xargs)
-        if [[ -n "$val" && ! " ${allowedS[@]} " =~ " ${val} " ]]; then
+        val=${val//\"/}
+        if [[ -n "$val" ]] && ! contains allowedS "$val"; then
           invalid+=("severities:${val}")
         fi
       done
 
-      # Validate verdicts
+      # ===============================
+      # Validation loop for verdicts
+      # ===============================
       for s in "${verArr[@]}"; do
         val=$(echo "$s" | xargs)
-        if [[ -n "$val" && ! " ${allowedV[@]} " =~ " ${val} " ]]; then
+        val=${val//\"/}
+        if [[ -n "$val" ]] && ! contains allowedV "$val"; then
           invalid+=("verdicts:${val}")
         fi
       done
 
-      # Fail deployment if any invalid values found
+      # ===============================
+      # Fail deployment if any invalid values
+      # ===============================
       if [ ${#invalid[@]} -gt 0 ]; then
         echo "Invalid GTI parameters: ${invalid[*]}"
         exit 1
