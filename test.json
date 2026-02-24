@@ -73,12 +73,14 @@
     "currentUserObjectId": {
       "type": "string",
       "metadata": {
+        "azureResourceId": "Microsoft.Graph/users",
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
       }
     },
     "currentUserId": {
       "type": "string",
       "metadata": {
+        "azureResourceId": "Microsoft.Graph/users",
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
       }
     },
