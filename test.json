@@ -5,8 +5,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.36.177.2456",
-      "templateHash": "10715485918722440424"
+      "version": "0.39.26.7824",
+      "templateHash": "14883079697884651274"
     }
   },
   "parameters": {
@@ -70,20 +70,13 @@
         "description": "CRON expression for Scheduling, default set to every 1 hour "
       }
     },
-    "currentUserObjId": {
+    "currentUserObjectId": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
-        "azureResourceId": "Microsoft.Graph/users",
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
       }
     },
-    "currentUserId": {
-    "type": "string",
-    "metadata": {
-      "description": "User Object ID",
-      "azureResourceId": "Microsoft.Directory/users" 
-    }
-  },
     "clientID": {
       "type": "string",
       "metadata": {
