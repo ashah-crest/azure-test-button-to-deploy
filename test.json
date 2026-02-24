@@ -70,7 +70,7 @@
         "description": "CRON expression for Scheduling, default set to every 1 hour "
       }
     },
-    "currentUserObjectId": {
+    "currentUserObjId": {
       "type": "string",
       "metadata": {
         "azureResourceId": "Microsoft.Graph/users",
@@ -78,12 +78,12 @@
       }
     },
     "currentUserId": {
-      "type": "string",
-      "metadata": {
-        "azureResourceId": "Microsoft.Graph/users",
-        "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
-      }
-    },
+    "type": "string",
+    "metadata": {
+      "description": "The Object ID of the user.",
+      "azureResourceId": "Microsoft.Graph/users"
+    }
+  },
     "clientID": {
       "type": "string",
       "metadata": {
