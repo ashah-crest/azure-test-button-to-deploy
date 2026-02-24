@@ -33,11 +33,14 @@ param threatScore string = ''
 @secure()
 param gtiApiToken string
 
-@description('Timer CRON expression passed via CLI')
-param timerSchedule string
+@description('CRON expression for Scheduling, default set to every 1 hour ')
+param timerSchedule string = '0 */1 * * *'
 
 @description('Object ID of the Azure AD user executing the template to provide access to Key Vault')
 param currentUserObjectId string
+
+@description('Object ID of the Azure AD user executing the template to provide access to Key Vault')
+param currentUserId string
 
 @description('Checkpoint table name')
 var checkpointTableName string = 'ApiCheckpoints'
@@ -55,16 +58,25 @@ param clientSecret string
 @description('MS Defender Application ID')
 param applicationID string
 
-////////////////////
-///////////////////
+//User Assigned Identity for the script to "talk" to Azure
+resource scriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'val-identity'
+  location: location
+}
 
 // ===============================
-// DEPLOYMENT SCRIPT: VALIDATE GTI PARAMETERS
+// Deployment SCRIPT:To Validate Parameters and Fetch Current User Object ID
 // ===============================
-resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+resource validateAndLookup 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name: 'validateGtiParams'
   location: location
   kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${scriptIdentity.id}': {}
+    }
+  }
   properties: {
     azCliVersion: '2.52.0'
     timeout: 'PT5M'
@@ -72,7 +84,6 @@ resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = 
     retentionInterval: 'P1D'
     forceUpdateTag: 'validateGtiParamsTag'      // ensures script runs every deployment
 
-    // Pass your Bicep parameters into the script environment here
     environmentVariables: [
       { name: 'THREAT_INPUT', value: threatLists }
       { name: 'SEV_INPUT', value: severities }
@@ -80,31 +91,31 @@ resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = 
     ]
 
     scriptContent: '''
-      # 1. Define Allowed Lists (Space-separated for easy Bash looping)
+      # Allowed Lists (Space-separated for easy Bash looping)
       allowedT="ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer"
       allowedS="SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN"
       allowedV="VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN"
 
       invalid=()
 
-      # 2. Validation Logic
-      # We replace commas with spaces to let Bash iterate naturally
+      # Validation Logic
+      # Replacing commas with spaces to let Bash iterate naturally
       
-      # Validate Threats
+      # Validating Threat Lists
       for val in ${THREAT_INPUT//,/ }; do
         if [[ ! $allowedT =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
           invalid+=("threatLists:$val")
         fi
       done
 
-      # Validate Severities
+      # Validating Severities
       for val in ${SEV_INPUT//,/ }; do
         if [[ ! $allowedS =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
           invalid+=("severities:$val")
         fi
       done
 
-      # Validate Verdicts
+      # Validating Verdicts
       for val in ${VERDICT_INPUT//,/ }; do
         if [[ ! $allowedV =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
           invalid+=("verdicts:$val")
@@ -118,6 +129,12 @@ resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = 
       fi
 
       echo "All parameters validated successfully."
+
+      # To get the Object ID of the user currently deploying via the Portal/CLI
+      USER_ID=$(az ad signed-in-user show --query id -o tsv)
+
+      echo "{\"userObjectId\": \"$USER_ID\"}" > $AZ_SCRIPTS_OUTPUT_PATH
+      
     '''
   }
 }
@@ -137,7 +154,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
     name: 'Standard_LRS'
   }
   dependsOn: [
-    validateGtiParams
+    validateAndLookup
   ]
 }
 
@@ -159,7 +176,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     Application_Type: 'web'
   }
   dependsOn: [
-    validateGtiParams
+    validateAndLookup
   ]
 }
 
@@ -177,7 +194,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
     accessPolicies: []
   }
   dependsOn: [
-    validateGtiParams
+    validateAndLookup
   ]
 }
 
@@ -304,7 +321,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
     httpsOnly: true
   }
   dependsOn: [
-    validateGtiParams
+    validateAndLookup
   ]
 }
 
@@ -326,7 +343,7 @@ resource keyVaultPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2024-11-01' = 
       }
       {
         tenantId: tenantId
-        objectId: currentUserObjectId
+        objectId: validateAndLookup.properties.outputs.userObjectId
         permissions: {
           secrets: ['get','list','set','delete']
         }

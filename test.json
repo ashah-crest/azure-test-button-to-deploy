@@ -5,8 +5,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.39.26.7824",
-      "templateHash": "16079465550466298593"
+      "version": "0.36.177.2456",
+      "templateHash": "10715485918722440424"
     }
   },
   "parameters": {
@@ -65,11 +65,18 @@
     },
     "timerSchedule": {
       "type": "string",
+      "defaultValue": "0 */1 * * *",
       "metadata": {
-        "description": "Timer CRON expression passed via CLI"
+        "description": "CRON expression for Scheduling, default set to every 1 hour "
       }
     },
     "currentUserObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
+      }
+    },
+    "currentUserId": {
       "type": "string",
       "metadata": {
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
@@ -106,12 +113,24 @@
     "keyVaultName": "[format('{0}-kv', parameters('appName'))]"
   },
   "resources": {
-    "validateGtiParams": {
+    "scriptIdentity": {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "val-identity",
+      "location": "[variables('location')]"
+    },
+    "validateAndLookup": {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2020-10-01",
       "name": "validateGtiParams",
       "location": "[variables('location')]",
       "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'val-identity'))]": {}
+        }
+      },
       "properties": {
         "azCliVersion": "2.52.0",
         "timeout": "PT5M",
@@ -132,8 +151,11 @@
             "value": "[parameters('verdicts')]"
           }
         ],
-        "scriptContent": "      # 1. Define Allowed Lists (Space-separated for easy Bash looping)\r\n      allowedT=\"ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer\"\r\n      allowedS=\"SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN\"\r\n      allowedV=\"VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN\"\r\n\r\n      invalid=()\r\n\r\n      # 2. Validation Logic\r\n      # We replace commas with spaces to let Bash iterate naturally\r\n      \r\n      # Validate Threats\r\n      for val in ${THREAT_INPUT//,/ }; do\r\n        if [[ ! $allowedT =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"threatLists:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validate Severities\r\n      for val in ${SEV_INPUT//,/ }; do\r\n        if [[ ! $allowedS =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"severities:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validate Verdicts\r\n      for val in ${VERDICT_INPUT//,/ }; do\r\n        if [[ ! $allowedV =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"verdicts:$val\")\r\n        fi\r\n      done\r\n\r\n      # 3. Final Check\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"ERROR: The following inputs are invalid: ${invalid[*]}\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All parameters validated successfully.\"\r\n    "
-      }
+        "scriptContent": "      # Allowed Lists (Space-separated for easy Bash looping)\r\n      allowedT=\"ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer\"\r\n      allowedS=\"SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN\"\r\n      allowedV=\"VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN\"\r\n\r\n      invalid=()\r\n\r\n      # Validation Logic\r\n      # Replacing commas with spaces to let Bash iterate naturally\r\n      \r\n      # Validating Threat Lists\r\n      for val in ${THREAT_INPUT//,/ }; do\r\n        if [[ ! $allowedT =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"threatLists:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Severities\r\n      for val in ${SEV_INPUT//,/ }; do\r\n        if [[ ! $allowedS =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"severities:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Verdicts\r\n      for val in ${VERDICT_INPUT//,/ }; do\r\n        if [[ ! $allowedV =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"verdicts:$val\")\r\n        fi\r\n      done\r\n\r\n      # 3. Final Check\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"ERROR: The following inputs are invalid: ${invalid[*]}\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All parameters validated successfully.\"\r\n\r\n      # To get the Object ID of the user currently deploying via the Portal/CLI\r\n      USER_ID=$(az ad signed-in-user show --query id -o tsv)\r\n\r\n      echo \"{\\\"userObjectId\\\": \\\"$USER_ID\\\"}\" > $AZ_SCRIPTS_OUTPUT_PATH\r\n      \r\n    "
+      },
+      "dependsOn": [
+        "scriptIdentity"
+      ]
     },
     "storageAccount": {
       "type": "Microsoft.Storage/storageAccounts",
@@ -145,7 +167,7 @@
         "name": "Standard_LRS"
       },
       "dependsOn": [
-        "validateGtiParams"
+        "validateAndLookup"
       ]
     },
     "checkpointTable": {
@@ -174,7 +196,7 @@
         "Application_Type": "web"
       },
       "dependsOn": [
-        "validateGtiParams"
+        "validateAndLookup"
       ]
     },
     "keyVault": {
@@ -192,7 +214,7 @@
         "accessPolicies": []
       },
       "dependsOn": [
-        "validateGtiParams"
+        "validateAndLookup"
       ]
     },
     "keyVaultSecret": {
@@ -323,7 +345,7 @@
         "hostingPlan",
         "keyVault",
         "storageAccount",
-        "validateGtiParams"
+        "validateAndLookup"
       ]
     },
     "keyVaultPolicy": {
@@ -344,7 +366,7 @@
           },
           {
             "tenantId": "[variables('tenantId')]",
-            "objectId": "[parameters('currentUserObjectId')]",
+            "objectId": "[reference('validateAndLookup').outputs.userObjectId]",
             "permissions": {
               "secrets": [
                 "get",
@@ -358,7 +380,8 @@
       },
       "dependsOn": [
         "functionApp",
-        "keyVault"
+        "keyVault",
+        "validateAndLookup"
       ]
     },
     "tableStorageRoleAssignment": {
