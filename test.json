@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "1163202525409089247"
+      "templateHash": "10918731205634790021"
     }
   },
   "parameters": {
@@ -95,74 +95,32 @@
     }
   },
   "variables": {
-    "copy": [
-      {
-        "name": "severityList",
-        "count": "[length(split(parameters('severities'), ','))]",
-        "input": "[trim(split(parameters('severities'), ',')[copyIndex('severityList')])]"
-      },
-      {
-        "name": "threatListArray",
-        "count": "[length(split(parameters('threatLists'), ','))]",
-        "input": "[trim(split(parameters('threatLists'), ',')[copyIndex('threatListArray')])]"
-      },
-      {
-        "name": "severityArray",
-        "count": "[length(split(parameters('severities'), ','))]",
-        "input": "[trim(split(parameters('severities'), ',')[copyIndex('severityArray')])]"
-      },
-      {
-        "name": "verdictArray",
-        "count": "[length(split(parameters('verdicts'), ','))]",
-        "input": "[trim(split(parameters('verdicts'), ',')[copyIndex('verdictArray')])]"
-      }
-    ],
     "tenantId": "[tenant().tenantId]",
     "location": "[resourceGroup().location]",
     "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
     "checkpointTableName": "ApiCheckpoints",
     "failedIOCsTableName": "FailedIOCs",
-    "allowedThreatLists": [
-      "ransomware",
-      "malicious-network-infrastructure",
-      "malware",
-      "threat-actor",
-      "trending",
-      "mobile",
-      "osx",
-      "linux",
-      "iot",
-      "cryptominer",
-      "phishing",
-      "first-stage-delivery-vectors",
-      "vulnerability-weaponization",
-      "infostealer"
-    ],
-    "allowedSeverities": [
-      "SEVERITY_NONE",
-      "SEVERITY_LOW",
-      "SEVERITY_MEDIUM",
-      "SEVERITY_HIGH",
-      "SEVERITY_UNKNOWN"
-    ],
-    "allowedVerdicts": [
-      "VERDICT_BENIGN",
-      "VERDICT_UNDETECTED",
-      "VERDICT_SUSPICIOUS",
-      "VERDICT_UNKNOWN"
-    ],
-    "invalidSubnets": "[filter(variables('threatListArray'), lambda('x', and(not(empty(lambdaVariables('x'))), not(contains(variables('allowedThreatLists'), lambdaVariables('x'))))))]",
-    "invalidEnvs": "[filter(variables('severityArray'), lambda('x', and(not(empty(lambdaVariables('x'))), not(contains(variables('allowedSeverities'), lambdaVariables('x'))))))]",
-    "invalidRegions": "[filter(variables('verdictArray'), lambda('x', and(not(empty(lambdaVariables('x'))), not(contains(variables('allowedVerdicts'), lambdaVariables('x'))))))]",
-    "validateSubnets": "[if(equals(length(variables('invalidSubnets')), 0), 'ok', json(format('Invalid subnet values: {0}', join(variables('invalidSubnets'), ', '))))]",
-    "validateEnvs": "[if(equals(length(variables('invalidEnvs')), 0), 'ok', json(format('Invalid env values: {0}', join(variables('invalidEnvs'), ', '))))]",
-    "validateRegions": "[if(equals(length(variables('invalidRegions')), 0), 'ok', json(format('Invalid region values: {0}', join(variables('invalidRegions'), ', '))))]",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
     "keyVaultName": "[format('{0}-kv', parameters('appName'))]"
   },
   "resources": {
+    "validateGtiParams": {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2020-10-01",
+      "name": "validateGtiParams",
+      "location": "[variables('location')]",
+      "kind": "AzureCLI",
+      "properties": {
+        "azCliVersion": "2.52.0",
+        "timeout": "PT5M",
+        "cleanupPreference": "OnSuccess",
+        "retentionInterval": "P1D",
+        "forceUpdateTag": "validateGtiParamsTag",
+        "scriptContent": "      # Split comma-separated strings\r\n      IFS=',' read -ra threatArr <<< \"${threatLists}\"\r\n      IFS=',' read -ra sevArr <<< \"${severities}\"\r\n      IFS=',' read -ra verArr <<< \"${verdicts}\"\r\n\r\n      invalid=()\r\n\r\n      # Allowed lists\r\n      allowedT=(ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer)\r\n      allowedS=(SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN)\r\n      allowedV=(VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN)\r\n\r\n      # Validate threatLists\r\n      for s in \"${threatArr[@]}\"; do\r\n        val=$(echo \"$s\" | xargs)\r\n        if [[ -n \"$val\" && ! \" ${allowedT[@]} \" =~ \" ${val} \" ]]; then\r\n          invalid+=(\"threatLists:${val}\")\r\n        fi\r\n      done\r\n\r\n      # Validate severities\r\n      for s in \"${sevArr[@]}\"; do\r\n        val=$(echo \"$s\" | xargs)\r\n        if [[ -n \"$val\" && ! \" ${allowedS[@]} \" =~ \" ${val} \" ]]; then\r\n          invalid+=(\"severities:${val}\")\r\n        fi\r\n      done\r\n\r\n      # Validate verdicts\r\n      for s in \"${verArr[@]}\"; do\r\n        val=$(echo \"$s\" | xargs)\r\n        if [[ -n \"$val\" && ! \" ${allowedV[@]} \" =~ \" ${val} \" ]]; then\r\n          invalid+=(\"verdicts:${val}\")\r\n        fi\r\n      done\r\n\r\n      # Fail deployment if any invalid values found\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"Invalid GTI parameters: ${invalid[*]}\"\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All GTI parameters are valid\"\r\n    "
+      }
+    },
     "storageAccount": {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2025-01-01",
@@ -171,7 +129,10 @@
       "kind": "StorageV2",
       "sku": {
         "name": "Standard_LRS"
-      }
+      },
+      "dependsOn": [
+        "validateGtiParams"
+      ]
     },
     "checkpointTable": {
       "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
@@ -197,7 +158,10 @@
       "kind": "web",
       "properties": {
         "Application_Type": "web"
-      }
+      },
+      "dependsOn": [
+        "validateGtiParams"
+      ]
     },
     "keyVault": {
       "type": "Microsoft.KeyVault/vaults",
@@ -212,7 +176,10 @@
         },
         "enableRbacAuthorization": false,
         "accessPolicies": []
-      }
+      },
+      "dependsOn": [
+        "validateGtiParams"
+      ]
     },
     "keyVaultSecret": {
       "type": "Microsoft.KeyVault/vaults/secrets",
@@ -341,7 +308,8 @@
         "appInsights",
         "hostingPlan",
         "keyVault",
-        "storageAccount"
+        "storageAccount",
+        "validateGtiParams"
       ]
     },
     "keyVaultPolicy": {

@@ -55,42 +55,71 @@ param clientSecret string
 @description('MS Defender Application ID')
 param applicationID string
 
-// Split + trim
-var severityList = [
-  for s in split(severities, ','):trim(s)
-]
-
 ////////////////////
-
-// Allowed values for each parameter
-var allowedThreatLists = ['ransomware','malicious-network-infrastructure','malware','threat-actor','trending','mobile','osx','linux','iot','cryptominer','phishing','first-stage-delivery-vectors','vulnerability-weaponization','infostealer']
-
-var allowedSeverities = ['SEVERITY_NONE','SEVERITY_LOW','SEVERITY_MEDIUM','SEVERITY_HIGH','SEVERITY_UNKNOWN']
-
-var allowedVerdicts = ['VERDICT_BENIGN','VERDICT_UNDETECTED','VERDICT_SUSPICIOUS','VERDICT_UNKNOWN']
-
-// Convert comma-separated strings to arrays, trimming spaces
-var threatListArray = [for s in split(threatLists, ','): trim(s)]
-var severityArray = [for e in split(severities, ','): trim(e)]
-var verdictArray = [for r in split(verdicts, ','): trim(r)]
-
-// Find invalid values for each list (ignore empty)
-var invalidSubnets = filter(threatListArray, x => !empty(x) && !contains(allowedThreatLists, x))
-var invalidEnvs = filter(severityArray, x => !empty(x) && !contains(allowedSeverities, x))
-var invalidRegions = filter(verdictArray, x => !empty(x) && !contains(allowedVerdicts, x))
-
-var validateSubnets = length(invalidSubnets) == 0
-  ? 'ok'
-  : json('Invalid subnet values: ${join(invalidSubnets, ', ')}')
-
-var validateEnvs = length(invalidEnvs) == 0
-  ? 'ok'
-  : json('Invalid env values: ${join(invalidEnvs, ', ')}')
-
-var validateRegions = length(invalidRegions) == 0
-  ? 'ok'
-  : json('Invalid region values: ${join(invalidRegions, ', ')}')
 ///////////////////
+
+// ===============================
+// DEPLOYMENT SCRIPT: VALIDATE GTI PARAMETERS
+// ===============================
+resource validateGtiParams 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: 'validateGtiParams'
+  location: location
+  kind: 'AzureCLI'
+  properties: {
+    azCliVersion: '2.52.0'
+    timeout: 'PT5M'
+    cleanupPreference: 'OnSuccess'  // deletes script resource after success
+    retentionInterval: 'P1D'
+    forceUpdateTag: 'validateGtiParamsTag'      // ensures script runs every deployment
+
+    scriptContent: '''
+      # Split comma-separated strings
+      IFS=',' read -ra threatArr <<< "${threatLists}"
+      IFS=',' read -ra sevArr <<< "${severities}"
+      IFS=',' read -ra verArr <<< "${verdicts}"
+
+      invalid=()
+
+      # Allowed lists
+      allowedT=(ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer)
+      allowedS=(SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN)
+      allowedV=(VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN)
+
+      # Validate threatLists
+      for s in "${threatArr[@]}"; do
+        val=$(echo "$s" | xargs)
+        if [[ -n "$val" && ! " ${allowedT[@]} " =~ " ${val} " ]]; then
+          invalid+=("threatLists:${val}")
+        fi
+      done
+
+      # Validate severities
+      for s in "${sevArr[@]}"; do
+        val=$(echo "$s" | xargs)
+        if [[ -n "$val" && ! " ${allowedS[@]} " =~ " ${val} " ]]; then
+          invalid+=("severities:${val}")
+        fi
+      done
+
+      # Validate verdicts
+      for s in "${verArr[@]}"; do
+        val=$(echo "$s" | xargs)
+        if [[ -n "$val" && ! " ${allowedV[@]} " =~ " ${val} " ]]; then
+          invalid+=("verdicts:${val}")
+        fi
+      done
+
+      # Fail deployment if any invalid values found
+      if [ ${#invalid[@]} -gt 0 ]; then
+        echo "Invalid GTI parameters: ${invalid[*]}"
+        exit 1
+      fi
+
+      echo "All GTI parameters are valid"
+    '''
+  }
+}
+
 
 var storageAccountName = toLower('${appName}sa${uniqueString(resourceGroup().id)}')
 var functionAppName = '${appName}-func'
@@ -105,6 +134,9 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
   sku: {
     name: 'Standard_LRS'
   }
+  dependsOn: [
+    validateGtiParams
+  ]
 }
 
 /* -------------------- Table Storage -------------------- */
@@ -124,6 +156,9 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
   }
+  dependsOn: [
+    validateGtiParams
+  ]
 }
 
 /* -------------------- Key Vault -------------------- */
@@ -139,6 +174,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
     enableRbacAuthorization: false
     accessPolicies: []
   }
+  dependsOn: [
+    validateGtiParams
+  ]
 }
 
 /* -------------------- Key Vault Secret -------------------- */
@@ -263,6 +301,9 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
     }
     httpsOnly: true
   }
+  dependsOn: [
+    validateGtiParams
+  ]
 }
 
 /* -------------------- Key Vault Access Policy -------------------- */
