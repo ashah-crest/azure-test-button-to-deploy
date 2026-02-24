@@ -80,8 +80,8 @@
     "currentUserId": {
     "type": "string",
     "metadata": {
-      "description": "The Object ID of the user.",
-      "azureResourceId": "Microsoft.Graph/users"
+      "description": "User Object ID",
+      "azureResourceId": "Microsoft.Directory/users" 
     }
   },
     "clientID": {
