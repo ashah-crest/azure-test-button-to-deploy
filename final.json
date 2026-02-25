@@ -1,0 +1,419 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.36.177.2456",
+      "templateHash": "9107146311481837552"
+    }
+  },
+  "parameters": {
+    "appName": {
+      "type": "string",
+      "metadata": {
+        "description": "Base prefix for naming (no spaces)"
+      }
+    },
+    "gtiApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Google Threat Intelligence (GTI) API Key"
+      }
+    },
+    "threatLists": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Comma-separated GTI threat list categories (empty for all)"
+      }
+    },
+    "lookBackDays": {
+      "type": "string",
+      "defaultValue": "7",
+      "metadata": {
+        "description": "Historical lookback period upto 7 days for initial sync (Default 7)"
+      }
+    },
+    "verdicts": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) Comma-separated GTI Verdict level(s) from VERDICT_BENIGN, VERDICT_UNDETECTED, VERDICT_SUSPICIOUS, VERDICT_UNKNOWN & empty for all"
+      }
+    },
+    "severities": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) Comma-separated GTI Severity level(s) from SEVERITY_NONE, SEVERITY_LOW, SEVERITY_MEDIUM, SEVERITY_HIGH, SEVERITY_UNKNOWN & empty for all"
+      }
+    },
+    "threatScore": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Minimum GTI Threat Score"
+      }
+    },
+    "timerSchedule": {
+      "type": "string",
+      "defaultValue": "0 */1 * * *",
+      "metadata": {
+        "description": "CRON expression for scheduling (default hourly)"
+      }
+    },
+    "currentUserObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "Object ID of deploying user for Key Vault access"
+      }
+    },
+    "clientID": {
+      "type": "string",
+      "metadata": {
+        "description": "MS Defender Application Client ID"
+      }
+    },
+    "clientSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "MS Defender Application Client Secret"
+      }
+    },
+    "applicationID": {
+      "type": "string",
+      "metadata": {
+        "description": "MS Defender Application ID"
+      }
+    },
+    "functionPackageUrl": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
+      "metadata": {
+        "description": "Public URL of the ZIP package containing the Java Function"
+      }
+    }
+  },
+  "variables": {
+    "tenantId": "[tenant().tenantId]",
+    "location": "[resourceGroup().location]",
+    "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
+    "hostingPlanName": "[format('{0}-plan', parameters('appName'))]",
+    "functionAppName": "[format('{0}-func', parameters('appName'))]",
+    "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
+    "keyVaultName": "[format('{0}-kv', parameters('appName'))]",
+    "deploymentScriptName": "[format('{0}-ds', parameters('appName'))]",
+    "checkpointTableName": "ApiCheckpoints",
+    "failedIOCsTableName": "FailedIOCs",
+    "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+    "functionsWorkerRuntime": "java",
+    "functionsExtensionVersion": "~4",
+    "linuxFxVersion": "JAVA|17"
+  },
+  "resources": {
+    "scriptIdentity": {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-identity', parameters('appName'))]",
+      "location": "[variables('location')]"
+    },
+    "validateParameters": {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2020-10-01",
+      "name": "[variables('deploymentScriptName')]",
+      "location": "[variables('location')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.52.0",
+        "timeout": "PT5M",
+        "cleanupPreference": "OnSuccess",
+        "retentionInterval": "P1D",
+        "forceUpdateTag": "[variables('deploymentScriptName')]",
+        "environmentVariables": [
+          {
+            "name": "THREAT_INPUT",
+            "value": "[parameters('threatLists')]"
+          },
+          {
+            "name": "SEV_INPUT",
+            "value": "[parameters('severities')]"
+          },
+          {
+            "name": "VERDICT_INPUT",
+            "value": "[parameters('verdicts')]"
+          }
+        ],
+        "scriptContent": "      # Allowed Lists (Space-separated for easy Bash looping)\r\n      allowedT=\"ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer\"\r\n      allowedS=\"SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN\"\r\n      allowedV=\"VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN\"\r\n\r\n      invalid=()\r\n\r\n      # Validation Logic\r\n      # Replacing commas with spaces to let Bash iterate naturally\r\n      \r\n      # Validating Threat Lists\r\n      for val in ${THREAT_INPUT//,/ }; do\r\n        if [[ ! $allowedT =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"threatLists:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Severities\r\n      for val in ${SEV_INPUT//,/ }; do\r\n        if [[ ! $allowedS =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"severities:$val\")\r\n        fi\r\n      done\r\n\r\n      # Validating Verdicts\r\n      for val in ${VERDICT_INPUT//,/ }; do\r\n        if [[ ! $allowedV =~ (^|[[:space:]])\"$val\"($|[[:space:]]) ]]; then\r\n          invalid+=(\"verdicts:$val\")\r\n        fi\r\n      done\r\n\r\n      # 3. Final Check\r\n      if [ ${#invalid[@]} -gt 0 ]; then\r\n        echo \"ERROR: The following inputs are invalid: ${invalid[*]}\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"All parameters validated successfully.\"      \r\n    "
+      },
+      "dependsOn": [
+        "scriptIdentity"
+      ]
+    },
+    "storageAccount": {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2025-01-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[variables('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "dependsOn": [
+        "validateParameters"
+      ]
+    },
+    "checkpointTable": {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/default/{1}', variables('storageAccountName'), variables('checkpointTableName'))]",
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
+    "failedIOCsTable": {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/default/{1}', variables('storageAccountName'), variables('failedIOCsTableName'))]",
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
+    "appInsights": {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[variables('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "dependsOn": [
+        "validateParameters"
+      ]
+    },
+    "keyVault": {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2024-11-01",
+      "name": "[variables('keyVaultName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "tenantId": "[variables('tenantId')]",
+        "sku": {
+          "name": "standard",
+          "family": "A"
+        },
+        "enableRbacAuthorization": false,
+        "accessPolicies": []
+      },
+      "dependsOn": [
+        "validateParameters"
+      ]
+    },
+    "keyVaultSecret": {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-11-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'GtiApiToken')]",
+      "properties": {
+        "value": "[parameters('gtiApiKey')]"
+      },
+      "dependsOn": [
+        "keyVault"
+      ]
+    },
+    "hostingPlan": {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[variables('hostingPlanName')]",
+      "location": "[variables('location')]",
+      "kind": "linux",
+      "sku": {
+        "name": "Y1",
+        "tier": "Dynamic"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    "functionApp": {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2024-11-01",
+      "name": "[variables('functionAppName')]",
+      "location": "[variables('location')]",
+      "kind": "functionapp,linux",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "siteConfig": {
+          "linuxFxVersion": "[variables('linuxFxVersion')]",
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage__accountName",
+              "value": "[variables('storageAccountName')]"
+            },
+            {
+              "name": "AzureWebJobsStorage__credential",
+              "value": "managedidentity"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "[variables('functionsWorkerRuntime')]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "[variables('functionsExtensionVersion')]"
+            },
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys('storageAccount', '2025-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_RUN_FROM_PACKAGE",
+              "value": "[parameters('functionPackageUrl')]"
+            },
+            {
+              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+              "value": "[reference('appInsights').InstrumentationKey]"
+            },
+            {
+              "name": "LOOKBACK_DAYS",
+              "value": "[parameters('lookBackDays')]"
+            },
+            {
+              "name": "THREAT_LISTS",
+              "value": "[parameters('threatLists')]"
+            },
+            {
+              "name": "SEVERITY_LEVELS",
+              "value": "[parameters('severities')]"
+            },
+            {
+              "name": "VERDICT_LEVELS",
+              "value": "[parameters('verdicts')]"
+            },
+            {
+              "name": "GTI_SCORE",
+              "value": "[parameters('threatScore')]"
+            },
+            {
+              "name": "TIMER_SCHEDULE",
+              "value": "[parameters('timerSchedule')]"
+            },
+            {
+              "name": "KEYVAULT_URI",
+              "value": "[reference('keyVault').vaultUri]"
+            },
+            {
+              "name": "CHECKPOINT_TABLE_NAME",
+              "value": "[variables('checkpointTableName')]"
+            },
+            {
+              "name": "FAILED_IOC_TABLE_NAME",
+              "value": "[variables('failedIOCsTableName')]"
+            },
+            {
+              "name": "STORAGE_ACCOUNT_NAME",
+              "value": "[variables('storageAccountName')]"
+            },
+            {
+              "name": "CLIENT_ID",
+              "value": "[parameters('clientID')]"
+            },
+            {
+              "name": "CLIENT_SECRET",
+              "value": "[parameters('clientSecret')]"
+            },
+            {
+              "name": "APPLICATION_ID",
+              "value": "[parameters('applicationID')]"
+            }
+          ]
+        },
+        "httpsOnly": true
+      },
+      "dependsOn": [
+        "appInsights",
+        "hostingPlan",
+        "keyVault",
+        "storageAccount",
+        "validateParameters"
+      ]
+    },
+    "keyVaultPolicy": {
+      "type": "Microsoft.KeyVault/vaults/accessPolicies",
+      "apiVersion": "2024-11-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'add')]",
+      "properties": {
+        "accessPolicies": [
+          {
+            "tenantId": "[variables('tenantId')]",
+            "objectId": "[reference('functionApp', '2024-11-01', 'full').identity.principalId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list"
+              ]
+            }
+          },
+          {
+            "tenantId": "[variables('tenantId')]",
+            "objectId": "[parameters('currentUserObjectId')]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list",
+                "set",
+                "delete"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "functionApp",
+        "keyVault"
+      ]
+    },
+    "tableStorageRoleAssignment": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.Web/sites', variables('functionAppName')), 'table-access')]",
+      "properties": {
+        "principalId": "[reference('functionApp', '2024-11-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[variables('storageTableContributor')]"
+      },
+      "dependsOn": [
+        "functionApp",
+        "storageAccount"
+      ]
+    }
+  },
+  "outputs": {
+    "functionAppName": {
+      "type": "string",
+      "value": "[variables('functionAppName')]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[variables('keyVaultName')]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageAccountName')]"
+    },
+    "checkpointTable": {
+      "type": "string",
+      "value": "[variables('checkpointTableName')]"
+    }
+  }
+}
