@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "6925654168692024399"
+      "templateHash": "99989035646082801"
     }
   },
   "parameters": {
@@ -118,8 +118,22 @@
     "scriptIdentity": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
-      "name": "val-identity",
+      "name": "[format('{0}-identity', parameters('appName'))]",
       "location": "[variables('location')]"
+    },
+    "roleAssign": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.ManagedIdentity/userAssignedIdentities/{0}', format('{0}-identity', parameters('appName')))]",
+      "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'reader')]",
+      "properties": {
+        "principalId": "[reference('scriptIdentity').principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "scriptIdentity"
+      ]
     },
     "validateAndLookup": {
       "type": "Microsoft.Resources/deploymentScripts",
@@ -130,7 +144,7 @@
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'val-identity'))]": {}
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))))]": {}
         }
       },
       "properties": {
