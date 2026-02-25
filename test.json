@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "99989035646082801"
+      "templateHash": "12783247041745215380"
     }
   },
   "parameters": {
@@ -75,12 +75,6 @@
       "defaultValue": "",
       "metadata": {
         "description": "Object ID of the Azure AD user executing the template to provide access to Key Vault"
-      }
-    },
-    "principalId": {
-      "type": "string",
-      "metadata": {
-        "azureResourceId": "Microsoft.Graph/users"
       }
     },
     "clientID": {
