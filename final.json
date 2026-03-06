@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "9107146311481837552"
+      "templateHash": "3890017254098702283"
     }
   },
   "parameters": {
@@ -59,7 +59,7 @@
     },
     "timerSchedule": {
       "type": "string",
-      "defaultValue": "0 */1 * * *",
+      "defaultValue": "0 * */1 * * *",
       "metadata": {
         "description": "CRON expression for scheduling (default hourly)"
       }
@@ -70,33 +70,27 @@
         "description": "Object ID of deploying user for Key Vault access"
       }
     },
-    "clientID": {
+    "appClientID": {
       "type": "string",
       "metadata": {
         "description": "MS Defender Application Client ID"
       }
     },
-    "clientSecret": {
+    "appClientSecret": {
       "type": "securestring",
       "metadata": {
         "description": "MS Defender Application Client Secret"
       }
     },
-    "applicationID": {
+    "appTenantId": {
       "type": "string",
       "metadata": {
-        "description": "MS Defender Application ID"
-      }
-    },
-    "functionPackageUrl": {
-      "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
-      "metadata": {
-        "description": "Public URL of the ZIP package containing the Java Function"
+        "description": "MS Defender Application Tenant ID"
       }
     }
   },
   "variables": {
+    "functionPackageUrl": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
     "tenantId": "[tenant().tenantId]",
     "location": "[resourceGroup().location]",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
@@ -278,7 +272,7 @@
             },
             {
               "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": "[parameters('functionPackageUrl')]"
+              "value": "[variables('functionPackageUrl')]"
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
@@ -326,15 +320,15 @@
             },
             {
               "name": "CLIENT_ID",
-              "value": "[parameters('clientID')]"
+              "value": "[parameters('appClientID')]"
             },
             {
               "name": "CLIENT_SECRET",
-              "value": "[parameters('clientSecret')]"
+              "value": "[parameters('appClientSecret')]"
             },
             {
               "name": "APPLICATION_ID",
-              "value": "[parameters('applicationID')]"
+              "value": "[parameters('appTenantId')]"
             }
           ]
         },
