@@ -181,8 +181,26 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
 // Store API token as a KeyVault secret
 resource keyVaultSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = {
   parent: keyVault
-  name: 'GtiApiToken'
+  name: 'gti-api-token'
   properties: { value: gtiApiKey }
+}
+
+resource clientId 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = {
+  parent: keyVault
+  name: 'app-client-id'
+  properties: { value: appClientID }
+}
+
+resource clientSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = {
+  parent: keyVault
+  name: 'app-client-secret'
+  properties: { value: appClientSecret }
+}
+
+resource applicationTenantId 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = {
+  parent: keyVault
+  name: 'app-tenant-id'
+  properties: { value: appTenantId }
 }
 
 // App Service Plan (Consumption)
