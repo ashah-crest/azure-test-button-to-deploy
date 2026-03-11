@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "3416808885846865063"
+      "templateHash": "17156932723432324600"
     }
   },
   "parameters": {
@@ -149,7 +149,7 @@
       "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
       "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'StorageBlobDataContributor')]",
       "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453a-a403-e96b0029c9fe')]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
         "principalId": "[reference('scriptIdentity').principalId]",
         "principalType": "ServicePrincipal"
       },
