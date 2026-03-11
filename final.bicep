@@ -186,12 +186,24 @@ resource keyVaultSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = {
 }
 
 // App Service Plan (Consumption)
-resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+// resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+//   name: hostingPlanName
+//   location: location
+//   kind: 'linux'
+//   sku: { name: 'Y1', tier: 'Dynamic' }
+//   properties: { reserved: true }
+// }
+resource hostingPlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: hostingPlanName
   location: location
   kind: 'linux'
-  sku: { name: 'Y1', tier: 'Dynamic' }
-  properties: { reserved: true }
+  sku: {
+    tier: 'FlexConsumption'
+    name: 'FC1'
+  }
+  properties: {
+    reserved: true
+  }
 }
 
 // Function App (Consumption)
