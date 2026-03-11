@@ -274,6 +274,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
           type: 'blobContainer'
           value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip'
         }
+      }
     }
     siteConfig: {
       appSettings: [
@@ -300,7 +301,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
           // value: functionPackageUrl
-          value: https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip
+          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip'
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
