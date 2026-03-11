@@ -6,12 +6,14 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "13135706650923745350"
+      "templateHash": "5825259994623672746"
     }
   },
   "parameters": {
     "appName": {
       "type": "string",
+      "minLength": 1,
+      "maxLength": 8,
       "metadata": {
         "description": "Base prefix for naming (no spaces)"
       }

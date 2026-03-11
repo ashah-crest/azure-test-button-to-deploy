@@ -2,6 +2,8 @@ targetScope = 'resourceGroup'
 
 // ------------- Parameters -------------
 
+@minLength(1)
+@maxLength(8)
 @description('Base prefix for naming (no spaces)')
 param appName string
 
