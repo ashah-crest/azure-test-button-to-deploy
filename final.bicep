@@ -154,12 +154,12 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
 // Blob container
 // -------------------------------
 // Blob service (required parent for containers)
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-01-01' = {
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
   name: 'default'          // must always be 'default'
   parent: storageAccount
 }
 
-resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-01-01' = {
+resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-06-01' = {
   parent: blobService
   name: toLower('${appName}-container')
   properties: {
@@ -167,13 +167,75 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
   }
 }
 
-// Blob (your ZIP)
-resource functionZip 'Microsoft.Storage/storageAccounts/blobServices/containers/blobs@2025-01-01' = {
-  name: 'functionapp.zip'
-  parent: container        // ✅ parent must be the container
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: '${appName}-script-role'
+  scope: storageAccount
   properties: {
-    source: functionPackageUrl
-    contentType: 'application/zip'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453a-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: scriptIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: '${appName}-zip-copy-ds'
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${scriptIdentity.id}': {}
+    }
+  }
+  dependsOn: [
+    roleAssignment
+  ]
+  properties: {
+    azCliVersion: '2.59.0'
+    timeout: 'PT10M'
+    retentionInterval: 'P1D'
+    environmentVariables: [
+      { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
+      { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
+      { name: 'CONTAINER_NAME', value: container.name }
+      { name: 'DEST_BLOB_NAME', value: 'lib.zip' }
+    ]
+    scriptContent: '''
+      # Start the server-side copy from Public URL to Azure Blob
+      echo "Starting copy from $ZIP_URL..."
+      az storage blob copy start \
+        --account-name $STORAGE_ACCOUNT \
+        --destination-container $CONTAINER_NAME \
+        --destination-blob $DEST_BLOB_NAME \
+        --source-uri $ZIP_URL \
+        --auth-mode login
+
+      # Give Azure a moment to initialize the copy metadata
+      sleep 5
+
+      # Poll for completion
+      while true; do
+        status=$(az storage blob show \
+          --account-name $STORAGE_ACCOUNT \
+          --container-name $CONTAINER_NAME \
+          --name $DEST_BLOB_NAME \
+          --query "properties.copy.status" -o tsv \
+          --auth-mode login)
+        
+        echo "Current Status: $status"
+
+        if [ "$status" == "success" ]; then
+          echo "Copy completed successfully."
+          break
+        elif [ "$status" == "failed" ] || [ "$status" == "aborted" ]; then
+          echo "Error: Copy ended with terminal state: $status"
+          exit 1
+        fi
+        
+        # Wait before checking again
+        sleep 5
+      done
+    '''
   }
 }
 
