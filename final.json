@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "13408307341967489649"
+      "templateHash": "13135706650923745350"
     }
   },
   "parameters": {
@@ -103,8 +103,7 @@
     "failedIOCsTableName": "FailedIOCs",
     "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
     "functionsWorkerRuntime": "java",
-    "functionsExtensionVersion": "~4",
-    "linuxFxVersion": "JAVA|17"
+    "functionsExtensionVersion": "~4"
   },
   "resources": {
     "scriptIdentity": {
@@ -280,8 +279,13 @@
       },
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "functionAppConfig": {
+          "runtime": {
+            "name": "java",
+            "version": "17"
+          }
+        },
         "siteConfig": {
-          "linuxFxVersion": "[variables('linuxFxVersion')]",
           "appSettings": [
             {
               "name": "AzureWebJobsStorage__accountName",

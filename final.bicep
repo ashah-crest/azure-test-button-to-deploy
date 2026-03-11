@@ -62,7 +62,7 @@ var storageTableContributor string = '/providers/Microsoft.Authorization/roleDef
 
 var functionsWorkerRuntime = 'java'
 var functionsExtensionVersion = '~4'
-var linuxFxVersion = 'JAVA|17'
+// var linuxFxVersion = 'JAVA|17'
 
 // ------------- Resource Definitions -------------
 
@@ -234,8 +234,13 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   }
   properties: {
     serverFarmId: hostingPlan.id
+    functionAppConfig: {
+      runtime: {
+        name: 'java'
+        version: '17'
+      }
+    }
     siteConfig: {
-      linuxFxVersion: linuxFxVersion
       appSettings: [
         {
           name: 'AzureWebJobsStorage__accountName'
