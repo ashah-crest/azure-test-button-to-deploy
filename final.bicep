@@ -168,7 +168,7 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: '${appName}-script-role'
+  name: guid(storageAccount.id, scriptIdentity.id, 'StorageBlobDataContributor')
   scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453a-a403-e96b0029c9fe') // Storage Blob Data Contributor
