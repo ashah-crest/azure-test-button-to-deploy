@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "5825259994623672746"
+      "templateHash": "13127799080107568070"
     }
   },
   "parameters": {
@@ -165,6 +165,37 @@
         "validateParameters"
       ]
     },
+    "blobService": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
+    "container": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'functionzips')]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "blobService"
+      ]
+    },
+    "functionZip": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers/blobs",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}/{2}/{3}', variables('storageAccountName'), 'default', 'functionzips', 'functionapp.zip')]",
+      "properties": {
+        "source": "[variables('functionPackageUrl')]",
+        "contentType": "application/zip"
+      },
+      "dependsOn": [
+        "container"
+      ]
+    },
     "checkpointTable": {
       "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
       "apiVersion": "2025-01-01",
@@ -311,7 +342,7 @@
             },
             {
               "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": "[variables('functionPackageUrl')]"
+              "value": 1
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",

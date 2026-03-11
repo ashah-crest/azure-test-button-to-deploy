@@ -150,6 +150,34 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
   dependsOn: [ validateParameters ]
 }
 
+// -------------------------------
+// Blob container
+// -------------------------------
+// Blob service (required parent for containers)
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-01-01' = {
+  name: 'default'          // must always be 'default'
+  parent: storageAccount
+}
+
+resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-01-01' = {
+  parent: blobService
+  name: '${appName}-container'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+// Blob (your ZIP)
+resource functionZip 'Microsoft.Storage/storageAccounts/blobServices/containers/blobs@2025-01-01' = {
+  name: 'functionapp.zip'
+  parent: container        // ✅ parent must be the container
+  properties: {
+    source: functionPackageUrl
+    contentType: 'application/zip'
+  }
+}
+
+
 // Tables
 resource checkpointTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2025-01-01' = {
   name: '${storageAccount.name}/default/${checkpointTableName}'
@@ -241,6 +269,11 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         name: 'java'
         version: '17'
       }
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip'
+        }
     }
     siteConfig: {
       appSettings: [
@@ -266,7 +299,8 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: functionPackageUrl
+          // value: functionPackageUrl
+          value: https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
