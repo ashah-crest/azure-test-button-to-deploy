@@ -75,71 +75,71 @@ resource scriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
 }
 
 // Deployment Script:To Validate Parameters
-resource validateParameters 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
-  name: deploymentScriptName
-  location: location
-  kind: 'AzureCLI'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${scriptIdentity.id}': {}
-    }
-  }
-  properties: {
-    azCliVersion: '2.52.0'
-    timeout: 'PT5M'
-    cleanupPreference: 'OnSuccess'  // deletes script resource after success
-    retentionInterval: 'P1D'
-    forceUpdateTag: deploymentScriptName      // ensures script runs every deployment
+// resource validateParameters 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+//   name: deploymentScriptName
+//   location: location
+//   kind: 'AzureCLI'
+//   identity: {
+//     type: 'UserAssigned'
+//     userAssignedIdentities: {
+//       '${scriptIdentity.id}': {}
+//     }
+//   }
+//   properties: {
+//     azCliVersion: '2.52.0'
+//     timeout: 'PT5M'
+//     cleanupPreference: 'OnSuccess'  // deletes script resource after success
+//     retentionInterval: 'P1D'
+//     forceUpdateTag: deploymentScriptName      // ensures script runs every deployment
 
-    environmentVariables: [
-      { name: 'THREAT_INPUT', value: threatLists }
-      { name: 'SEV_INPUT', value: severities }
-      { name: 'VERDICT_INPUT', value: verdicts }
-    ]
+//     environmentVariables: [
+//       { name: 'THREAT_INPUT', value: threatLists }
+//       { name: 'SEV_INPUT', value: severities }
+//       { name: 'VERDICT_INPUT', value: verdicts }
+//     ]
 
-    scriptContent: '''
-      # Allowed Lists (Space-separated for easy Bash looping)
-      allowedT="ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer"
-      allowedS="SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN"
-      allowedV="VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN"
+//     scriptContent: '''
+//       # Allowed Lists (Space-separated for easy Bash looping)
+//       allowedT="ransomware malicious-network-infrastructure malware threat-actor trending mobile osx linux iot cryptominer phishing first-stage-delivery-vectors vulnerability-weaponization infostealer"
+//       allowedS="SEVERITY_NONE SEVERITY_LOW SEVERITY_MEDIUM SEVERITY_HIGH SEVERITY_UNKNOWN"
+//       allowedV="VERDICT_BENIGN VERDICT_UNDETECTED VERDICT_SUSPICIOUS VERDICT_UNKNOWN"
 
-      invalid=()
+//       invalid=()
 
-      # Validation Logic
-      # Replacing commas with spaces to let Bash iterate naturally
+//       # Validation Logic
+//       # Replacing commas with spaces to let Bash iterate naturally
       
-      # Validating Threat Lists
-      for val in ${THREAT_INPUT//,/ }; do
-        if [[ ! $allowedT =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
-          invalid+=("threatLists:$val")
-        fi
-      done
+//       # Validating Threat Lists
+//       for val in ${THREAT_INPUT//,/ }; do
+//         if [[ ! $allowedT =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
+//           invalid+=("threatLists:$val")
+//         fi
+//       done
 
-      # Validating Severities
-      for val in ${SEV_INPUT//,/ }; do
-        if [[ ! $allowedS =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
-          invalid+=("severities:$val")
-        fi
-      done
+//       # Validating Severities
+//       for val in ${SEV_INPUT//,/ }; do
+//         if [[ ! $allowedS =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
+//           invalid+=("severities:$val")
+//         fi
+//       done
 
-      # Validating Verdicts
-      for val in ${VERDICT_INPUT//,/ }; do
-        if [[ ! $allowedV =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
-          invalid+=("verdicts:$val")
-        fi
-      done
+//       # Validating Verdicts
+//       for val in ${VERDICT_INPUT//,/ }; do
+//         if [[ ! $allowedV =~ (^|[[:space:]])"$val"($|[[:space:]]) ]]; then
+//           invalid+=("verdicts:$val")
+//         fi
+//       done
 
-      # 3. Final Check
-      if [ ${#invalid[@]} -gt 0 ]; then
-        echo "ERROR: The following inputs are invalid: ${invalid[*]}" >&2
-        exit 1
-      fi
+//       # 3. Final Check
+//       if [ ${#invalid[@]} -gt 0 ]; then
+//         echo "ERROR: The following inputs are invalid: ${invalid[*]}" >&2
+//         exit 1
+//       fi
 
-      echo "All parameters validated successfully."      
-    '''
-  }
-}
+//       echo "All parameters validated successfully."      
+//     '''
+//   }
+// }
 
 // Storage Account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
@@ -147,7 +147,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
   location: location
   kind: 'StorageV2'
   sku: { name: 'Standard_LRS' }
-  dependsOn: [ validateParameters ]
+  // dependsOn: [ validateParameters ]
 }
 
 // -------------------------------
@@ -161,7 +161,7 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-01-01'
 
 resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-01-01' = {
   parent: blobService
-  name: '${appName}container'
+  name: toLower('${appName}-container')
   properties: {
     publicAccess: 'None'
   }
@@ -192,7 +192,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   location: location
   kind: 'web'
   properties: { Application_Type: 'web' }
-  dependsOn: [ validateParameters ]
+  // dependsOn: [ validateParameters ]
 }
 
 // Key Vault
@@ -205,7 +205,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
     enableRbacAuthorization: false
     accessPolicies: []
   }
-  dependsOn: [ validateParameters ]
+  // dependsOn: [ validateParameters ]
 }
 
 // Store API token as a KeyVault secret
@@ -371,7 +371,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
     }
     httpsOnly: true
   }
-  dependsOn: [ validateParameters ]
+  // dependsOn: [ validateParameters ]
 }
 
 // Give the function app access to Key Vault secrets
