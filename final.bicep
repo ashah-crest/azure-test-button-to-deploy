@@ -161,7 +161,7 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-01-01'
 
 resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-01-01' = {
   parent: blobService
-  name: '${appName}-container'
+  name: '${appName}container'
   properties: {
     publicAccess: 'None'
   }

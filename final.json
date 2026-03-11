@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "4151084664545430927"
+      "templateHash": "10724555249663465836"
     }
   },
   "parameters": {
@@ -176,7 +176,7 @@
     "container": {
       "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
       "apiVersion": "2025-01-01",
-      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', format('{0}-container', parameters('appName')))]",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', format('{0}container', parameters('appName')))]",
       "properties": {
         "publicAccess": "None"
       },
@@ -187,7 +187,7 @@
     "functionZip": {
       "type": "Microsoft.Storage/storageAccounts/blobServices/containers/blobs",
       "apiVersion": "2025-01-01",
-      "name": "[format('{0}/{1}/{2}/{3}', variables('storageAccountName'), 'default', format('{0}-container', parameters('appName')), 'functionapp.zip')]",
+      "name": "[format('{0}/{1}/{2}/{3}', variables('storageAccountName'), 'default', format('{0}container', parameters('appName')), 'functionapp.zip')]",
       "properties": {
         "source": "[variables('functionPackageUrl')]",
         "contentType": "application/zip"
@@ -320,7 +320,7 @@
           "deployment": {
             "storage": {
               "type": "blobContainer",
-              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), format('{0}-container', parameters('appName')))]"
+              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), format('{0}container', parameters('appName')))]"
             }
           }
         },
@@ -348,7 +348,7 @@
             },
             {
               "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), format('{0}-container', parameters('appName')))]"
+              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), format('{0}container', parameters('appName')))]"
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
