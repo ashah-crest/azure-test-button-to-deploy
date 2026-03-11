@@ -335,6 +335,9 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         storage: {
           type: 'blobContainer'
           value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip'
+          authentication: {
+            type: 'SystemAssignedIdentity' 
+          }
         }
       }
     }
@@ -433,7 +436,10 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
     }
     httpsOnly: true
   }
-  // dependsOn: [ validateParameters ]
+  dependsOn: [ 
+    // validateParamters 
+    zipUploadScript
+  ]
 }
 
 // Give the function app access to Key Vault secrets

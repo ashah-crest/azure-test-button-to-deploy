@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "17156932723432324600"
+      "templateHash": "15821053181819571665"
     }
   },
   "parameters": {
@@ -319,7 +319,10 @@
           "deployment": {
             "storage": {
               "type": "blobContainer",
-              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), toLower(format('{0}-container', parameters('appName'))))]"
+              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), toLower(format('{0}-container', parameters('appName'))))]",
+              "authentication": {
+                "type": "SystemAssignedIdentity"
+              }
             }
           }
         },
@@ -414,7 +417,8 @@
         "container",
         "hostingPlan",
         "keyVault",
-        "storageAccount"
+        "storageAccount",
+        "zipUploadScript"
       ]
     },
     "keyVaultPolicy": {
