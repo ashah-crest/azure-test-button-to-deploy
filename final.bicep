@@ -198,7 +198,7 @@ resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
       { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
       { name: 'CONTAINER_NAME', value: container.name }
-      { name: 'DEST_BLOB_NAME', value: 'lib.zip' }
+      { name: 'DEST_BLOB_NAME', value: 'gti.zip' }
     ]
     scriptContent: '''
       # Start the server-side copy from Public URL to Azure Blob
@@ -338,7 +338,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
       deployment: {
         storage: {
           type: 'blobContainer'
-          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip'
+          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/gti.zip'
           authentication: {
             type: 'SystemAssignedIdentity' 
           }
