@@ -356,27 +356,13 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
           value: 'managedidentity'
         }
         {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: functionsWorkerRuntime
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: functionsExtensionVersion
-        }
-        {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          // value: functionPackageUrl
-          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/functionapp.zip'
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
           value: appInsights.properties.InstrumentationKey
         }
-
         // configuration
         {
           name: 'LOOKBACK_DAYS'

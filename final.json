@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "15808702236551406157"
+      "templateHash": "3051607064277254552"
     }
   },
   "parameters": {
@@ -341,20 +341,8 @@
               "value": "managedidentity"
             },
             {
-              "name": "FUNCTIONS_WORKER_RUNTIME",
-              "value": "[variables('functionsWorkerRuntime')]"
-            },
-            {
-              "name": "FUNCTIONS_EXTENSION_VERSION",
-              "value": "[variables('functionsExtensionVersion')]"
-            },
-            {
               "name": "AzureWebJobsStorage",
               "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys('storageAccount', '2025-01-01').keys[0].value)]"
-            },
-            {
-              "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": "[format('https://{0}.blob.core.windows.net/{1}/functionapp.zip', variables('storageAccountName'), toLower(format('{0}-container', parameters('appName'))))]"
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
