@@ -338,7 +338,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
       deployment: {
         storage: {
           type: 'blobContainer'
-          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}/gti.zip'
+          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}'
           authentication: {
             type: 'SystemAssignedIdentity' 
           }
