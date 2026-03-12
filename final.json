@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "7709852394703833870"
+      "templateHash": "7281529049564150170"
     }
   },
   "parameters": {
@@ -96,7 +96,7 @@
     "tenantId": "[tenant().tenantId]",
     "location": "[resourceGroup().location]",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
-    "deploymentContainerName": "[format('{0}-container', parameters('appName'))]",
+    "deploymentContainerName": "[format('{0}container', parameters('appName'))]",
     "hostingPlanName": "[format('{0}-plan', parameters('appName'))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
