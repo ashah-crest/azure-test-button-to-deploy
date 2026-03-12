@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "5001791236793842801"
+      "templateHash": "7709852394703833870"
     }
   },
   "parameters": {
@@ -143,15 +143,27 @@
       "kind": "StorageV2",
       "sku": {
         "name": "Standard_LRS"
+      },
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": false,
+        "dnsEndpointType": "Standard",
+        "minimumTlsVersion": "TLS1_2",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow"
+        },
+        "publicNetworkAccess": "Enabled"
       }
     },
     "roleAssignment": {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
-      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'StorageBlobDataContributor')]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'StorageBlobDataOwner')]",
       "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')]",
         "principalId": "[reference('scriptIdentity').principalId]",
         "principalType": "ServicePrincipal"
       },
@@ -291,6 +303,7 @@
           }
         },
         "siteConfig": {
+          "minTlsVersion": "1.2",
           "appSettings": [
             {
               "name": "AzureWebJobsStorage__accountName",
