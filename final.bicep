@@ -341,6 +341,17 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   ]
 }
 
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(scriptIdentity.id, 'contributor', resourceGroup().id)
+  scope: resourceGroup() 
+  properties: {
+    // Contributor Role ID
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c') 
+    principalId: scriptIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: '${appName}-zip-copy-ds'
   location: location
@@ -353,6 +364,7 @@ resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   }
   dependsOn: [
     functionApp
+    roleAssignment
   ]
   properties: {
     azCliVersion: '2.59.0'
