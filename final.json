@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "15821053181819571665"
+      "templateHash": "9595547289474449320"
     }
   },
   "parameters": {
@@ -315,6 +315,9 @@
           "runtime": {
             "name": "java",
             "version": "17"
+          },
+          "scaleAndConcurrency": {
+            "instanceMemoryMB": 2048
           },
           "deployment": {
             "storage": {
