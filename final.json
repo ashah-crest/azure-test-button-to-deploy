@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "11769534183874008213"
+      "templateHash": "5001791236793842801"
     }
   },
   "parameters": {
@@ -96,6 +96,7 @@
     "tenantId": "[tenant().tenantId]",
     "location": "[resourceGroup().location]",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
+    "deploymentContainerName": "[format('{0}-container', parameters('appName'))]",
     "hostingPlanName": "[format('{0}-plan', parameters('appName'))]",
     "functionAppName": "[format('{0}-func', parameters('appName'))]",
     "appInsightsName": "[format('{0}-ai', parameters('appName'))]",
@@ -106,6 +107,28 @@
     "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3"
   },
   "resources": {
+    "storageAccount::blobServices::deploymentContainer": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', variables('deploymentContainerName'))]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "storageAccount::blobServices"
+      ]
+    },
+    "storageAccount::blobServices": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+      "properties": {
+        "deleteRetentionPolicy": {}
+      },
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
     "scriptIdentity": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
@@ -259,9 +282,10 @@
           "deployment": {
             "storage": {
               "type": "blobContainer",
-              "value": "[format('{0}app-package', reference('storageAccount').primaryEndpoints.blob)]",
+              "value": "[format('{0}{1}', reference('storageAccount').primaryEndpoints.blob, variables('deploymentContainerName'))]",
               "authentication": {
-                "type": "SystemAssignedIdentity"
+                "type": "UserAssignedIdentity",
+                "userAssignedIdentityResourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName')))]"
               }
             }
           }
@@ -344,6 +368,7 @@
         "appInsights",
         "hostingPlan",
         "keyVault",
+        "scriptIdentity",
         "storageAccount"
       ]
     },
@@ -356,7 +381,8 @@
         "packageUri": "[variables('functionPackageUrl')]"
       },
       "dependsOn": [
-        "functionApp"
+        "functionApp",
+        "roleAssignment"
       ]
     },
     "keyVaultPolicy": {
