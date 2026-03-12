@@ -51,6 +51,7 @@ var tenantId = tenant().tenantId
 var location = resourceGroup().location
 
 var storageAccountName = toLower('${appName}sa${uniqueString(resourceGroup().id)}')
+var deploymentContainerName = toLower('${appName}-container')
 var hostingPlanName = '${appName}-plan'
 var functionAppName = '${appName}-func'
 var appInsightsName = '${appName}-ai'
@@ -147,96 +148,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
   // dependsOn: [ validateParameters ]
 }
 
-// -------------------------------
-// Blob container
-// -------------------------------
-// Blob service (required parent for containers)
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
-  name: 'default'          // must always be 'default'
-  parent: storageAccount
-}
-
-resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-06-01' = {
-  parent: blobService
-  name: toLower('${appName}-container')
-  properties: {
-    publicAccess: 'None'
-  }
-}
-
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, scriptIdentity.id, 'StorageBlobDataContributor')
-  scope: storageAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
-    principalId: scriptIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: '${appName}-zip-copy-ds'
-  location: location
-  kind: 'AzureCLI'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${scriptIdentity.id}': {}
-    }
-  }
-  dependsOn: [
-    roleAssignment
-  ]
-  properties: {
-    azCliVersion: '2.59.0'
-    timeout: 'PT10M'
-    retentionInterval: 'P1D'
-    environmentVariables: [
-      { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
-      { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
-      { name: 'CONTAINER_NAME', value: container.name }
-      { name: 'DEST_BLOB_NAME', value: 'gti.zip' }
-    ]
-    scriptContent: '''
-      # Start the server-side copy from Public URL to Azure Blob
-      echo "Starting copy from $ZIP_URL..."
-      az storage blob copy start \
-        --account-name $STORAGE_ACCOUNT \
-        --destination-container $CONTAINER_NAME \
-        --destination-blob $DEST_BLOB_NAME \
-        --source-uri $ZIP_URL \
-        --auth-mode login
-
-      # Give Azure a moment to initialize the copy metadata
-      sleep 5
-
-      # Poll for completion
-      while true; do
-        status=$(az storage blob show \
-          --account-name $STORAGE_ACCOUNT \
-          --container-name $CONTAINER_NAME \
-          --name $DEST_BLOB_NAME \
-          --query "properties.copy.status" -o tsv \
-          --auth-mode login)
-        
-        echo "Current Status: $status"
-
-        if [ "$status" == "success" ]; then
-          echo "Copy completed successfully."
-          break
-        elif [ "$status" == "failed" ] || [ "$status" == "aborted" ]; then
-          echo "Error: Copy ended with terminal state: $status"
-          exit 1
-        fi
-        
-        # Wait before checking again
-        sleep 5
-      done
-    '''
-  }
-}
-
-
 // Tables
 resource checkpointTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2025-01-01' = {
   name: '${storageAccount.name}/default/${checkpointTableName}'
@@ -315,7 +226,6 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2024-04-01' = {
 
 var storageConnString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
 
-
 // Function App (Consumption)
 resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   name: functionAppName
@@ -338,11 +248,9 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
       deployment: {
         storage: {
           type: 'blobContainer'
-          value: 'https://${storageAccount.name}.blob.core.windows.net/${container.name}'
+          value: 'https://${storageAccount.name}.blob.core.windows.net/app-package'
           authentication: {
-            storageAccountConnectionStringName: storageConnString
-            type: 'SystemAssignedIdentity' 
-            userAssignedIdentityResourceId: scriptIdentity.id
+            type: 'SystemAssignedIdentity'
           }
         }
       }
@@ -430,8 +338,68 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   }
   dependsOn: [ 
     // validateParamters 
-    zipUploadScript
   ]
+}
+
+resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: '${appName}-zip-copy-ds'
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${scriptIdentity.id}': {}
+    }
+  }
+  dependsOn: [
+    functionApp
+  ]
+  properties: {
+    azCliVersion: '2.59.0'
+    timeout: 'PT10M'
+    retentionInterval: 'P1D'
+    environmentVariables: [
+      { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
+      { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
+      { name: 'APP_NAME', value: appName }
+      { name: 'SUB_ID', value: subscription().subscriptionId }
+    ]
+    scriptContent: '''
+      # 1. Exit immediately if a command exits with a non-zero status
+      set -e
+
+      # 1. Force the CLI to use the correct subscription
+      echo "Setting context to subscription: $SUB_ID"
+      az account set --subscription "$SUB_ID"
+
+      echo "Starting deployment process..."
+
+      # 2. Use wget instead of curl (more common in CLI images)
+      # -O deployment.zip saves the file
+      if ! wget -q $ZIP_URL -O deployment.zip; then
+        echo "ERROR: wget failed to download the zip from $ZIP_URL" >&2
+        exit 1
+      fi
+
+      # 3. Check if file actually exists and has size
+      if [ ! -s deployment.zip ]; then
+        echo "ERROR: Downloaded zip file is empty or missing." >&2
+        exit 1
+      fi
+
+      echo "Pushing ZIP to Function App: $APP_NAME in RG: $RG_NAME"
+
+      # 4. Deploy using the CLI's native zip deploy command
+      # Adding --async can help prevent timeouts for large zips
+      az functionapp deployment source config-zip \
+        --resource-group "$RG_NAME" \
+        --name "$APP_NAME" \
+        --src deployment.zip \
+        --verbose
+
+      echo "Deployment successfully triggered."
+    '''
+  }
 }
 
 // Give the function app access to Key Vault secrets
