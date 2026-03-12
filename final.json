@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "5951710191045446188"
+      "templateHash": "4070912826710320208"
     }
   },
   "parameters": {
@@ -363,7 +363,7 @@
             "value": "[parameters('appName')]"
           }
         ],
-        "scriptContent": "      # 1. Download the ZIP\r\n      echo \"Downloading ZIP from $ZIP_URL...\"\r\n      curl -L $ZIP_URL -o deployment.zip\r\n\r\n      # 2. Deploy to Flex Consumption using OneDeploy logic via CLI\r\n      echo \"Deploying to $APP_NAME...\"\r\n      az functionapp deployment source config-zip \\\r\n        -g $RG_NAME \\\r\n        -n $APP_NAME \\\r\n        --src deployment.zip\r\n\r\n      done\r\n    "
+        "scriptContent": "      # 1. Exit immediately if a command exits with a non-zero status\r\n      set -e\r\n\r\n      echo \"Starting deployment process...\"\r\n\r\n      # 2. Use wget instead of curl (more common in CLI images)\r\n      # -O deployment.zip saves the file\r\n      if ! wget -q $ZIP_URL -O deployment.zip; then\r\n        echo \"ERROR: wget failed to download the zip from $ZIP_URL\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      # 3. Check if file actually exists and has size\r\n      if [ ! -s deployment.zip ]; then\r\n        echo \"ERROR: Downloaded zip file is empty or missing.\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"Pushing ZIP to Function App: $APP_NAME in RG: $RG_NAME\"\r\n\r\n      # 4. Deploy using the CLI's native zip deploy command\r\n      # Adding --async can help prevent timeouts for large zips\r\n      az functionapp deployment source config-zip \\\r\n        --resource-group \"$RG_NAME\" \\\r\n        --name \"$APP_NAME\" \\\r\n        --src deployment.zip \\\r\n        --verbose\r\n\r\n      echo \"Deployment successfully triggered.\"\r\n    "
       },
       "dependsOn": [
         "functionApp",
