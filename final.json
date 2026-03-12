@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "3885605461567616885"
+      "templateHash": "803981194587609499"
     }
   },
   "parameters": {
@@ -324,8 +324,7 @@
               "value": "[format('https://{0}.blob.core.windows.net/{1}', variables('storageAccountName'), toLower(format('{0}-container', parameters('appName'))))]",
               "authentication": {
                 "storageAccountConnectionStringName": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys('storageAccount', '2025-01-01').keys[0].value)]",
-                "type": "SystemAssignedIdentity",
-                "userAssignedIdentityResourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName')))]"
+                "type": "StorageAccountConnectionString"
               }
             }
           }
@@ -409,7 +408,6 @@
         "container",
         "hostingPlan",
         "keyVault",
-        "scriptIdentity",
         "storageAccount",
         "zipUploadScript"
       ]
