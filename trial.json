@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "4667786817952604688"
+      "templateHash": "4636530033584145342"
     }
   },
   "parameters": {
@@ -323,7 +323,7 @@
               "type": "blobContainer",
               "value": "[format('https://{0}.blob.core.windows.net/{1}/gti.zip', variables('storageAccountName'), toLower(format('{0}-container', parameters('appName'))))]",
               "authentication": {
-                "storageAccountConnectionStringName": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys('storageAccount', '2025-01-01').keys[0].value)]",
+                "storageAccountConnectionStringName": "AzureWebJobsStorage",
                 "type": "StorageAccountConnectionString"
               }
             }
