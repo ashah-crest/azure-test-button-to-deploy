@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "6292907669177527537"
+      "templateHash": "9627172060674703392"
     }
   },
   "parameters": {
@@ -374,6 +374,10 @@
           {
             "name": "APP_NAME",
             "value": "[parameters('appName')]"
+          },
+          {
+            "name": "RG_NAME",
+            "value": "[resourceGroup().name]"
           },
           {
             "name": "SUB_ID",
