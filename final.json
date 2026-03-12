@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "9358159430456355215"
+      "templateHash": "6647577119106561604"
     }
   },
   "parameters": {
@@ -172,6 +172,48 @@
         "storageAccount"
       ]
     },
+    "zipUploadScript": {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[format('{0}-zip-copy-ds', parameters('appName'))]",
+      "location": "[variables('location')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.59.0",
+        "timeout": "PT10M",
+        "retentionInterval": "P1D",
+        "environmentVariables": [
+          {
+            "name": "ZIP_URL",
+            "value": "[variables('functionPackageUrl')]"
+          },
+          {
+            "name": "STORAGE_ACCOUNT",
+            "value": "[variables('storageAccountName')]"
+          },
+          {
+            "name": "CONTAINER_NAME",
+            "value": "[variables('deploymentContainerName')]"
+          },
+          {
+            "name": "DEST_BLOB_NAME",
+            "value": "gti.zip"
+          }
+        ],
+        "scriptContent": "      # Start the server-side copy from Public URL to Azure Blob\r\n      echo \"Starting copy from $ZIP_URL...\"\r\n      az storage blob copy start \\\r\n        --account-name $STORAGE_ACCOUNT \\\r\n        --destination-container $CONTAINER_NAME \\\r\n        --destination-blob $DEST_BLOB_NAME \\\r\n        --source-uri $ZIP_URL \\\r\n        --auth-mode login\r\n\r\n      # Give Azure a moment to initialize the copy metadata\r\n      sleep 5\r\n\r\n      # Poll for completion\r\n      while true; do\r\n        status=$(az storage blob show \\\r\n          --account-name $STORAGE_ACCOUNT \\\r\n          --container-name $CONTAINER_NAME \\\r\n          --name $DEST_BLOB_NAME \\\r\n          --query \"properties.copy.status\" -o tsv \\\r\n          --auth-mode login)\r\n        \r\n        echo \"Current Status: $status\"\r\n\r\n        if [ \"$status\" == \"success\" ]; then\r\n          echo \"Copy completed successfully.\"\r\n          break\r\n        elif [ \"$status\" == \"failed\" ] || [ \"$status\" == \"aborted\" ]; then\r\n          echo \"Error: Copy ended with terminal state: $status\"\r\n          exit 1\r\n        fi\r\n        \r\n        # Wait before checking again\r\n        sleep 5\r\n      done\r\n    "
+      },
+      "dependsOn": [
+        "roleAssignment",
+        "scriptIdentity",
+        "storageAccount"
+      ]
+    },
     "checkpointTable": {
       "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
       "apiVersion": "2025-01-01",
@@ -278,7 +320,10 @@
       "location": "[variables('location')]",
       "kind": "functionapp,linux",
       "identity": {
-        "type": "SystemAssigned"
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))))]": {}
+        }
       },
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
@@ -294,10 +339,10 @@
           "deployment": {
             "storage": {
               "type": "blobContainer",
-              "value": "[format('{0}{1}', reference('storageAccount').primaryEndpoints.blob, variables('deploymentContainerName'))]",
+              "value": "[format('https://{0}.blob.core.windows.net/{1}/gti.zip', variables('storageAccountName'), variables('deploymentContainerName'))]",
               "authentication": {
-                "type": "UserAssignedIdentity",
-                "userAssignedIdentityResourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName')))]"
+                "storageAccountConnectionStringName": "AzureWebJobsStorage",
+                "type": "StorageAccountConnectionString"
               }
             }
           }
@@ -382,20 +427,8 @@
         "hostingPlan",
         "keyVault",
         "scriptIdentity",
-        "storageAccount"
-      ]
-    },
-    "zipDeploy": {
-      "type": "Microsoft.Web/sites/extensions",
-      "apiVersion": "2023-12-01",
-      "name": "[format('{0}/{1}', variables('functionAppName'), 'onedeploy')]",
-      "properties": {
-        "type": "zip",
-        "packageUri": "[variables('functionPackageUrl')]"
-      },
-      "dependsOn": [
-        "functionApp",
-        "roleAssignment"
+        "storageAccount",
+        "zipUploadScript"
       ]
     },
     "keyVaultPolicy": {
