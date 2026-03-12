@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "9627172060674703392"
+      "templateHash": "11482822982461366329"
     }
   },
   "parameters": {
@@ -373,7 +373,7 @@
           },
           {
             "name": "APP_NAME",
-            "value": "[parameters('appName')]"
+            "value": "[variables('functionAppName')]"
           },
           {
             "name": "RG_NAME",

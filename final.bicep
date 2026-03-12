@@ -373,7 +373,7 @@ resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     environmentVariables: [
       { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
       { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
-      { name: 'APP_NAME', value: appName }
+      { name: 'APP_NAME', value: functionAppName }
       { name: 'RG_NAME', value: resourceGroup().name }
       { name: 'SUB_ID', value: subscription().subscriptionId }
     ]
