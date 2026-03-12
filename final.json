@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "9595547289474449320"
+      "templateHash": "15808702236551406157"
     }
   },
   "parameters": {
@@ -317,7 +317,8 @@
             "version": "17"
           },
           "scaleAndConcurrency": {
-            "instanceMemoryMB": 2048
+            "instanceMemoryMB": 2048,
+            "maximumInstanceCount": 3
           },
           "deployment": {
             "storage": {

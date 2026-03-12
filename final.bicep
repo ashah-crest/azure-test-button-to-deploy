@@ -333,6 +333,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
       }
       scaleAndConcurrency: {
         instanceMemoryMB: 2048
+        maximumInstanceCount: 3
       }
       deployment: {
         storage: {
