@@ -42,7 +42,7 @@ param appClientSecret string = 'qTI8Q~qyWv6eR-e9McobQvACFAFA-_cYB45SWaNc'
 @description('MS Defender Application Tenant ID')
 param appTenantId string = '3adb963c-8e61-48e8-a06d-6dbb0dacea39'
 
-var functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip'
+var functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/released-package.zip'
 
 
 // ------------- Variables -------------
@@ -463,9 +463,13 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
 }
 
 // The OneDeploy Extension
-resource zipDeploy 'Microsoft.Web/sites/extensions@2023-12-01' = {
-  parent: functionApp
-  name: 'onedeploy'
+resource functionAppName_OneDeploy 'Microsoft.Web/sites/extensions@2022-09-01' = {
+  name: '${functionAppName}/onedeploy'
+  location: location
+  properties: {
+    packageUri: functionPackageUrl
+    remoteBuild: false 
+  }
 }
 
 // Give the function app access to Key Vault secrets

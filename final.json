@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "13351337958971280927"
+      "templateHash": "8885229842765516960"
     }
   },
   "parameters": {
@@ -462,13 +462,15 @@
         "zipUploadScript"
       ]
     },
-    "zipDeploy": {
+    "functionAppName_OneDeploy": {
       "type": "Microsoft.Web/sites/extensions",
-      "apiVersion": "2023-12-01",
-      "name": "[format('{0}/{1}', variables('functionAppName'), 'onedeploy')]",
-      "dependsOn": [
-        "functionApp"
-      ]
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/onedeploy', variables('functionAppName'))]",
+      "location": "[variables('location')]",
+      "properties": {
+        "packageUri": "[variables('functionPackageUrl')]",
+        "remoteBuild": false
+      }
     },
     "keyVaultPolicy": {
       "type": "Microsoft.KeyVault/vaults/accessPolicies",
