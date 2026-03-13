@@ -283,67 +283,67 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2024-04-01' = {
 }
 
 // var storageConnString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: '${appName}-zip-copy-ds'
-  location: location
-  kind: 'AzureCLI'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${scriptIdentity.id}': {}
-    }
-  }
-  dependsOn: [
-    roleAssignment
-  ]
-  properties: {
-    azCliVersion: '2.59.0'
-    timeout: 'PT10M'
-    retentionInterval: 'P1D'
-    environmentVariables: [
-      { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
-      { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
-      { name: 'CONTAINER_NAME', value: deploymentContainerName }
-      { name: 'DEST_BLOB_NAME', value: 'gti.zip' }
-    ]
-    scriptContent: '''
-      # Start the server-side copy from Public URL to Azure Blob
-      echo "Starting copy from $ZIP_URL..."
-      az storage blob copy start \
-        --account-name $STORAGE_ACCOUNT \
-        --destination-container $CONTAINER_NAME \
-        --destination-blob $DEST_BLOB_NAME \
-        --source-uri $ZIP_URL \
-        --auth-mode login
+// resource zipUploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+//   name: '${appName}-zip-copy-ds'
+//   location: location
+//   kind: 'AzureCLI'
+//   identity: {
+//     type: 'UserAssigned'
+//     userAssignedIdentities: {
+//       '${scriptIdentity.id}': {}
+//     }
+//   }
+//   dependsOn: [
+//     roleAssignment
+//   ]
+//   properties: {
+//     azCliVersion: '2.59.0'
+//     timeout: 'PT10M'
+//     retentionInterval: 'P1D'
+//     environmentVariables: [
+//       { name: 'ZIP_URL', value: functionPackageUrl } // Pass your public ZIP URL here
+//       { name: 'STORAGE_ACCOUNT', value: storageAccount.name }
+//       { name: 'CONTAINER_NAME', value: deploymentContainerName }
+//       { name: 'DEST_BLOB_NAME', value: 'gti.zip' }
+//     ]
+//     scriptContent: '''
+//       # Start the server-side copy from Public URL to Azure Blob
+//       echo "Starting copy from $ZIP_URL..."
+//       az storage blob copy start \
+//         --account-name $STORAGE_ACCOUNT \
+//         --destination-container $CONTAINER_NAME \
+//         --destination-blob $DEST_BLOB_NAME \
+//         --source-uri $ZIP_URL \
+//         --auth-mode login
 
-      # Give Azure a moment to initialize the copy metadata
-      sleep 5
+//       # Give Azure a moment to initialize the copy metadata
+//       sleep 5
 
-      # Poll for completion
-      while true; do
-        status=$(az storage blob show \
-          --account-name $STORAGE_ACCOUNT \
-          --container-name $CONTAINER_NAME \
-          --name $DEST_BLOB_NAME \
-          --query "properties.copy.status" -o tsv \
-          --auth-mode login)
+//       # Poll for completion
+//       while true; do
+//         status=$(az storage blob show \
+//           --account-name $STORAGE_ACCOUNT \
+//           --container-name $CONTAINER_NAME \
+//           --name $DEST_BLOB_NAME \
+//           --query "properties.copy.status" -o tsv \
+//           --auth-mode login)
         
-        echo "Current Status: $status"
+//         echo "Current Status: $status"
 
-        if [ "$status" == "success" ]; then
-          echo "Copy completed successfully."
-          break
-        elif [ "$status" == "failed" ] || [ "$status" == "aborted" ]; then
-          echo "Error: Copy ended with terminal state: $status"
-          exit 1
-        fi
+//         if [ "$status" == "success" ]; then
+//           echo "Copy completed successfully."
+//           break
+//         elif [ "$status" == "failed" ] || [ "$status" == "aborted" ]; then
+//           echo "Error: Copy ended with terminal state: $status"
+//           exit 1
+//         fi
         
-        # Wait before checking again
-        sleep 5
-      done
-    '''
-  }
-}
+//         # Wait before checking again
+//         sleep 5
+//       done
+//     '''
+//   }
+// }
 
 // Function App (Consumption)
 resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
@@ -369,8 +369,7 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
           type: 'blobContainer'
           value: '${storageAccount.properties.primaryEndpoints.blob}${deploymentContainerName}'
           authentication: {
-            type: 'UserAssignedIdentity'
-            userAssignedIdentityResourceId: scriptIdentity.id
+            type: 'SystemAssigned'
           }
         }
       }
@@ -458,22 +457,11 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   }
   dependsOn: [ 
     // validateParamters 
-    zipUploadScript
+    //zipUploadScript
   ]
 }
 
 // The OneDeploy Extension
-resource functionAppName_OneDeploy 'Microsoft.Web/sites/extensions@2022-09-01' = {
-  name: '${functionAppName}/onedeploy'
-  location: location
-  properties: {
-    packageUri: functionPackageUrl
-    remoteBuild: false 
-  }
-  dependsOn:[
-    functionApp
-  ]
-}
 
 // Give the function app access to Key Vault secrets
 resource keyVaultPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2024-11-01' = {
