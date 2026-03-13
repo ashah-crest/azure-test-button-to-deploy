@@ -470,6 +470,9 @@ resource functionAppName_OneDeploy 'Microsoft.Web/sites/extensions@2022-09-01' =
     packageUri: functionPackageUrl
     remoteBuild: false 
   }
+  dependsOn:[
+    functionApp
+  ]
 }
 
 // Give the function app access to Key Vault secrets

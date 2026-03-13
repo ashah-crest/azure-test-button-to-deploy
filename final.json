@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "8885229842765516960"
+      "templateHash": "10355091069522657799"
     }
   },
   "parameters": {
@@ -97,7 +97,7 @@
     }
   },
   "variables": {
-    "functionPackageUrl": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip",
+    "functionPackageUrl": "https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/released-package.zip",
     "tenantId": "[tenant().tenantId]",
     "location": "[resourceGroup().location]",
     "storageAccountName": "[toLower(format('{0}sa{1}', parameters('appName'), uniqueString(resourceGroup().id)))]",
@@ -470,7 +470,10 @@
       "properties": {
         "packageUri": "[variables('functionPackageUrl')]",
         "remoteBuild": false
-      }
+      },
+      "dependsOn": [
+        "functionApp"
+      ]
     },
     "keyVaultPolicy": {
       "type": "Microsoft.KeyVault/vaults/accessPolicies",
