@@ -289,8 +289,8 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
         version: '17'
       }
       scaleAndConcurrency: {
-        instanceMemoryMB: 2048
-        maximumInstanceCount: 3
+        instanceMemoryMB: 512
+        maximumInstanceCount: 1
       }
       deployment: {
         storage: {
