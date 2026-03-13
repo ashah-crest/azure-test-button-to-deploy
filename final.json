@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "17113466752763628461"
+      "templateHash": "3726596312093172206"
     }
   },
   "parameters": {
@@ -20,20 +20,21 @@
     },
     "gtiApiKey": {
       "type": "securestring",
+      "defaultValue": "8f3d691e940119a932e2a374c71d16dd31ad5c866410704b71df8a9a9455c670",
       "metadata": {
         "description": "Google Threat Intelligence (GTI) API Key"
       }
     },
     "threatLists": {
       "type": "string",
-      "defaultValue": "",
+      "defaultValue": "ransomware",
       "metadata": {
         "description": "Comma-separated GTI threat list categories (empty for all)"
       }
     },
     "lookBackDays": {
       "type": "string",
-      "defaultValue": "7",
+      "defaultValue": "1",
       "metadata": {
         "description": "Historical lookback period upto 7 days for initial sync (Default 7)"
       }
@@ -54,38 +55,42 @@
     },
     "threatScore": {
       "type": "string",
-      "defaultValue": "",
+      "defaultValue": "60",
       "metadata": {
         "description": "Minimum GTI Threat Score"
       }
     },
     "timerSchedule": {
       "type": "string",
-      "defaultValue": "0 * */1 * * *",
+      "defaultValue": "0 */5 * * * *",
       "metadata": {
         "description": "CRON expression for scheduling (default hourly)"
       }
     },
     "currentUserObjectId": {
       "type": "string",
+      "defaultValue": "92c5470a-1222-4df9-8a67-f905b0e81f91",
       "metadata": {
         "description": "Object ID of deploying user for Key Vault access"
       }
     },
     "appClientID": {
       "type": "string",
+      "defaultValue": "091029b1-c795-47c7-9e7a-b27dabf27e53",
       "metadata": {
         "description": "MS Defender Application Client ID"
       }
     },
     "appClientSecret": {
       "type": "securestring",
+      "defaultValue": "qTI8Q~qyWv6eR-e9McobQvACFAFA-_cYB45SWaNc",
       "metadata": {
         "description": "MS Defender Application Client Secret"
       }
     },
     "appTenantId": {
       "type": "string",
+      "defaultValue": "3adb963c-8e61-48e8-a06d-6dbb0dacea39",
       "metadata": {
         "description": "MS Defender Application Tenant ID"
       }

@@ -9,13 +9,13 @@ param appName string
 
 @secure()
 @description('Google Threat Intelligence (GTI) API Key')
-param gtiApiKey string
+param gtiApiKey string = '8f3d691e940119a932e2a374c71d16dd31ad5c866410704b71df8a9a9455c670'
 
 @description('Comma-separated GTI threat list categories (empty for all)')
-param threatLists string = ''
+param threatLists string = 'ransomware'
 
 @description('Historical lookback period upto 7 days for initial sync (Default 7)')
-param lookBackDays string = '7'
+param lookBackDays string = '1'
 
 @description('(Optional) Comma-separated GTI Verdict level(s) from VERDICT_BENIGN, VERDICT_UNDETECTED, VERDICT_SUSPICIOUS, VERDICT_UNKNOWN & empty for all')
 param verdicts string = ''
@@ -24,23 +24,23 @@ param verdicts string = ''
 param severities string = ''
 
 @description('Minimum GTI Threat Score')
-param threatScore string = ''
+param threatScore string = '60'
 
 @description('CRON expression for scheduling (default hourly)')
-param timerSchedule string = '0 * */1 * * *'
+param timerSchedule string = '0 */5 * * * *'
 
 @description('Object ID of deploying user for Key Vault access')
-param currentUserObjectId string
+param currentUserObjectId string = '92c5470a-1222-4df9-8a67-f905b0e81f91'
 
 @description('MS Defender Application Client ID')
-param appClientID string
+param appClientID string = '091029b1-c795-47c7-9e7a-b27dabf27e53'
 
 @secure()
 @description('MS Defender Application Client Secret')
-param appClientSecret string
+param appClientSecret string = 'qTI8Q~qyWv6eR-e9McobQvACFAFA-_cYB45SWaNc'
 
 @description('MS Defender Application Tenant ID')
-param appTenantId string
+param appTenantId string = '3adb963c-8e61-48e8-a06d-6dbb0dacea39'
 
 var functionPackageUrl string = 'https://raw.githubusercontent.com/ashah-crest/azure-test-button-to-deploy/main/host.zip'
 
