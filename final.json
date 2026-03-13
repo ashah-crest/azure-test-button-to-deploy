@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "11482822982461366329"
+      "templateHash": "17113466752763628461"
     }
   },
   "parameters": {
@@ -104,14 +104,68 @@
     "deploymentScriptName": "[format('{0}-ds', parameters('appName'))]",
     "checkpointTableName": "ApiCheckpoints",
     "failedIOCsTableName": "FailedIOCs",
-    "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3"
+    "storageTableContributor": "/providers/Microsoft.Authorization/roleDefinitions/0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+    "storageBlobDataOwnerRoleId": "b7e6dc6d-f1e8-4753-8033-0f276bb0955b",
+    "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
   },
   "resources": {
+    "storageAccount::blobServices::deploymentContainer": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', variables('deploymentContainerName'))]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "storageAccount::blobServices"
+      ]
+    },
+    "storageAccount::blobServices": {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+      "properties": {
+        "deleteRetentionPolicy": {}
+      },
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
     "scriptIdentity": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-identity', parameters('appName'))]",
       "location": "[variables('location')]"
+    },
+    "roleAssignmentBlobDataOwner": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+      "name": "[guid(subscription().id, resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'Storage Blob Data Owner')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataOwnerRoleId'))]",
+        "principalId": "[reference('scriptIdentity').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "scriptIdentity",
+        "storageAccount"
+      ]
+    },
+    "roleAssignmentBlob": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+      "name": "[guid(subscription().id, resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'Storage Blob Data Contributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+        "principalId": "[reference('scriptIdentity').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "scriptIdentity",
+        "storageAccount"
+      ]
     },
     "storageAccount": {
       "type": "Microsoft.Storage/storageAccounts",
@@ -121,6 +175,18 @@
       "kind": "StorageV2",
       "sku": {
         "name": "Standard_LRS"
+      },
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": false,
+        "dnsEndpointType": "Standard",
+        "minimumTlsVersion": "TLS1_2",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow"
+        },
+        "publicNetworkAccess": "Enabled"
       }
     },
     "checkpointTable": {
@@ -245,9 +311,10 @@
           "deployment": {
             "storage": {
               "type": "blobContainer",
-              "value": "[format('https://{0}.blob.core.windows.net/app-package', variables('storageAccountName'))]",
+              "value": "[format('{0}{1}', reference('storageAccount').primaryEndpoints.blob, variables('deploymentContainerName'))]",
               "authentication": {
-                "type": "SystemAssignedIdentity"
+                "type": "UserAssignedIdentity",
+                "userAssignedIdentityResourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName')))]"
               }
             }
           }
@@ -330,67 +397,21 @@
         "appInsights",
         "hostingPlan",
         "keyVault",
+        "scriptIdentity",
         "storageAccount"
       ]
     },
-    "roleAssignment": {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))), 'contributor', resourceGroup().id)]",
+    "zipDeploy": {
+      "type": "Microsoft.Web/sites/extensions",
+      "apiVersion": "2023-12-01",
+      "name": "[format('{0}/{1}', variables('functionAppName'), 'onedeploy')]",
       "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
-        "principalId": "[reference('scriptIdentity').principalId]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "scriptIdentity"
-      ]
-    },
-    "zipUploadScript": {
-      "type": "Microsoft.Resources/deploymentScripts",
-      "apiVersion": "2023-08-01",
-      "name": "[format('{0}-zip-copy-ds', parameters('appName'))]",
-      "location": "[variables('location')]",
-      "kind": "AzureCLI",
-      "identity": {
-        "type": "UserAssigned",
-        "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', parameters('appName'))))]": {}
-        }
-      },
-      "properties": {
-        "azCliVersion": "2.59.0",
-        "timeout": "PT10M",
-        "retentionInterval": "P1D",
-        "environmentVariables": [
-          {
-            "name": "ZIP_URL",
-            "value": "[variables('functionPackageUrl')]"
-          },
-          {
-            "name": "STORAGE_ACCOUNT",
-            "value": "[variables('storageAccountName')]"
-          },
-          {
-            "name": "APP_NAME",
-            "value": "[variables('functionAppName')]"
-          },
-          {
-            "name": "RG_NAME",
-            "value": "[resourceGroup().name]"
-          },
-          {
-            "name": "SUB_ID",
-            "value": "[subscription().subscriptionId]"
-          }
-        ],
-        "scriptContent": "      # 1. Exit immediately if a command exits with a non-zero status\r\n      set -e\r\n\r\n      # 1. Force the CLI to use the correct subscription\r\n      echo \"Setting context to subscription: $SUB_ID\"\r\n      az account set --subscription \"$SUB_ID\"\r\n\r\n      echo \"Starting deployment process...\"\r\n\r\n      # 2. Use wget instead of curl (more common in CLI images)\r\n      # -O deployment.zip saves the file\r\n      if ! wget -q $ZIP_URL -O deployment.zip; then\r\n        echo \"ERROR: wget failed to download the zip from $ZIP_URL\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      # 3. Check if file actually exists and has size\r\n      if [ ! -s deployment.zip ]; then\r\n        echo \"ERROR: Downloaded zip file is empty or missing.\" >&2\r\n        exit 1\r\n      fi\r\n\r\n      echo \"Pushing ZIP to Function App: $APP_NAME in RG: $RG_NAME\"\r\n\r\n      # 4. Deploy using the CLI's native zip deploy command\r\n      # Adding --async can help prevent timeouts for large zips\r\n      az functionapp deployment source config-zip \\\r\n        --resource-group \"$RG_NAME\" \\\r\n        --name \"$APP_NAME\" \\\r\n        --src deployment.zip \\\r\n        --verbose\r\n\r\n      echo \"Deployment successfully triggered.\"\r\n    "
+        "packageUri": "[variables('functionPackageUrl')]"
       },
       "dependsOn": [
         "functionApp",
-        "roleAssignment",
-        "scriptIdentity",
-        "storageAccount"
+        "roleAssignmentBlob",
+        "roleAssignmentBlobDataOwner"
       ]
     },
     "keyVaultPolicy": {
