@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "3890017254098702283"
+      "templateHash": "13387383962104572203"
     }
   },
   "parameters": {
@@ -214,9 +214,42 @@
     "keyVaultSecret": {
       "type": "Microsoft.KeyVault/vaults/secrets",
       "apiVersion": "2024-11-01",
-      "name": "[format('{0}/{1}', variables('keyVaultName'), 'GtiApiToken')]",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'gti-api-token')]",
       "properties": {
         "value": "[parameters('gtiApiKey')]"
+      },
+      "dependsOn": [
+        "keyVault"
+      ]
+    },
+    "clientId": {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-11-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'app-client-id')]",
+      "properties": {
+        "value": "[parameters('appClientID')]"
+      },
+      "dependsOn": [
+        "keyVault"
+      ]
+    },
+    "clientSecret": {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-11-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'app-client-secret')]",
+      "properties": {
+        "value": "[parameters('appClientSecret')]"
+      },
+      "dependsOn": [
+        "keyVault"
+      ]
+    },
+    "applicationTenantId": {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-11-01",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'app-tenant-id')]",
+      "properties": {
+        "value": "[parameters('appTenantId')]"
       },
       "dependsOn": [
         "keyVault"
@@ -317,18 +350,6 @@
             {
               "name": "STORAGE_ACCOUNT_NAME",
               "value": "[variables('storageAccountName')]"
-            },
-            {
-              "name": "CLIENT_ID",
-              "value": "[parameters('appClientID')]"
-            },
-            {
-              "name": "CLIENT_SECRET",
-              "value": "[parameters('appClientSecret')]"
-            },
-            {
-              "name": "APPLICATION_ID",
-              "value": "[parameters('appTenantId')]"
             }
           ]
         },
