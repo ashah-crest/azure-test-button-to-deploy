@@ -1,498 +1,591 @@
-#!/usr/bin/env python3
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
 
-import os
+
+
+
 import json
-import logging
-import tempfile
-import time
-from dataclasses import dataclass
-from typing import List, Optional, Dict
+import os
+import re
+import sys
+import subprocess
+from socket import AF_UNIX, SOCK_DGRAM, socket
 
-import requests
-import configparser
 
-from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from filelock import FileLock  # cross-platform lock
+# Exit error codes
+ERR_NO_REQUEST_MODULE = 1
+ERR_BAD_ARGUMENTS = 2
+ERR_BAD_MD5_SUM = 3
+ERR_NO_RESPONSE_VT = 4
+ERR_SOCKET_OPERATION = 5
+ERR_FILE_NOT_FOUND = 6
+ERR_INVALID_JSON = 7
 
-import utils
 
-VERSION = "1.0.0"
-API_TIMEOUT = 60
-MAX_LIMIT = 4000
-MAX_WORKERS = 6
-IOC_TTL = 7 * 24 * 3600  # TTL in seconds (e.g., 7 days)
-MAX_CDB_FILE_SIZE = 50 * 1024 * 1024  # Maximum file size (for warning purposes only, bytes)
+try:
+    import requests
+    from requests.exceptions import Timeout
+except Exception:
+    print("No module 'requests' found. Install: pip install requests")
+    sys.exit(ERR_NO_REQUEST_MODULE)
 
-IOC_TYPE_MAP = {
-    "ip_address": "ip",
-    "domain": "domain",
-    "url": "url",
-    "file": "hash"
+
+
+# ossec.conf configuration:
+# <integration>
+#   <name>GTI</name>
+#   <api_key>API_KEY</api_key> <!-- Replace with your GTI API key -->
+#   <group>syscheck</group>
+#   <alert_format>json</alert_format>
+# </integration>
+
+
+# Global vars
+debug_enabled = True
+timeout = 10
+retries = 3
+pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+json_alert = {}
+
+
+# Log and socket path
+LOG_FILE = f'{pwd}/logs/integrations.log'
+SOCKET_ADDR = f'{pwd}/queue/sockets/queue'
+GTI_MALICIOUS_IP = f'{pwd}/etc/lists/gti_malicious_ips'
+GTI_MALICIOUS_URL = f'{pwd}/etc/lists/gti_malicious_urls'
+GTI_MALICIOUS_DOMAIN = f'{pwd}/etc/lists/gti_malicious_domains'
+GTI_MALICIOUS_FILE_HASHES = f'{pwd}/etc/lists/gti_malicious_file_hashes'
+
+
+GTI_FILE_MITRE_API = ""
+
+
+# Constants
+ALERT_INDEX = 1
+APIKEY_INDEX = 2
+TIMEOUT_INDEX = 6
+RETRIES_INDEX = 7
+
+
+VULN_INFO = {
+    API = "https://www.virustotal.com/api/v3/collections/{id}",
+    HEADER = {"accept": "application/json","x-apikey": ""}
 }
 
 
-# -------------------- helpers --------------------
+FILE_MITRE_INFO = {
+    API = "https://www.virustotal.com/api/v3/files/{id}/behaviour_mitre_trees",
+    HEADER = {"accept": "application/json","x-apikey": ""}
+}
 
-def ensure_dir(path):
-    if path:
-        os.makedirs(path, exist_ok=True)
 
 
-def utc_hour(dt):
-    return dt.strftime("%Y%m%d%H")
 
-
-def latest_hour():
-    # GTI latest available = current UTC - 2 hours
-    return datetime.utcnow() - timedelta(hours=2)
-
-
-# -------------------- config --------------------
-
-@dataclass
-class Config:
-    api_key: str
-    base_url: str
-    checkpoint: str
-    threat_lists: List[str]
-    threat_score: Optional[int]
-    cdb_dir: str
-    output: Dict[str, str]
-    log_file: str
-    lock_file: str
-
-
-def load_config(path):
-    parser = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-    parser.read(path)
-
-    threat_lists = [
-        x.strip()
-        for x in parser.get("filters", "threat_list_ids").split(",")
-    ]
-    score = parser.get("filters", "threat_score", fallback=None)
-
-    return Config(
-        api_key=parser.get("gti", "api_key"),
-        base_url=parser.get("gti", "base_url"),
-        checkpoint=parser.get("gti", "checkpoint_file"),
-        threat_lists=threat_lists,
-        threat_score=int(score) if score else None,
-        cdb_dir=parser.get("wazuh", "cdb_dir"),
-        output={
-            "ip": parser.get("output", "ip_list"),
-            "domain": parser.get("output", "domain_list"),
-            "url": parser.get("output", "url_list"),
-            "hash": parser.get("output", "hash_list"),
-        },
-        log_file=parser.get("logging", "log_file"),
-        lock_file=parser.get("logging", "lock_file"),
-    )
-
-
-# -------------------- logging --------------------
-
-def setup_logging(path):
-    ensure_dir(os.path.dirname(path))
-    logging.basicConfig(
-        filename=path,
-        level=logging.INFO,
-        format="%(asctime)sZ %(levelname)s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S"
-    )
-
-
-# -------------------- checkpoint --------------------
-
-class Checkpoint:
-
-    def __init__(self, cfg):
-        self.path = path = cfg.checkpoint
-        ensure_dir(os.path.dirname(path))
-        if os.path.exists(path):
-            try:
-                with open(path) as f:
-                    self.data = json.load(f)
-            except Exception:
-                logging.warning("checkpoint corrupted resetting")
-                self.data = {}
-        else:
-            for tl in cfg.threat_lists:
-                self.data[tl] = None
-
-    def get(self, k):
-        return self.data.get(k)
-
-    def update(self, k, v):
-        self.data[k] = v
-
-    def save(self):
-        with open(self.path, "w") as f:
-            json.dump(self.data, f, indent=2)
-
-
-# -------------------- GTI client --------------------
-
-class GTIClient:
-
-    def __init__(self, cfg):
-        self.base = cfg.base_url
-        self.key = cfg.api_key
-        self.score = cfg.threat_score
-
-    def _headers(self):
-        return {"accept": "application/json", "x-apikey": self.key}
-
-    def _params(self):
-        p = {"limit": MAX_LIMIT}
-        if self.score is not None:
-            p["query"] = f"gti_score:{self.score}+"
-        return p
-
-    def fetch_latest(self, tl):
-        url = f"{self.base}/threat_lists/{tl}/latest"
-        r = requests.get(url, headers=self._headers(), params=self._params(), timeout=60)
-        r.raise_for_status()
-        return r.json()
-
-    def fetch_hour(self, tl, hour):
-        url = f"{self.base}/threat_lists/{tl}/{hour}"
-        r = requests.get(url, headers=self._headers(), params=self._params(), timeout=60)
-        r.raise_for_status()
-        return r.json()
-
-
-# -------------------- IOC store --------------------
-
-class IOCStore:
-    def __init__(self, cfg: Config):
-        self.cfg = cfg
-        # ensure output directory exists
-        os.makedirs(cfg.cdb_dir, exist_ok=True)
-
-        # initialize data buckets per category
-        self.data = {cat: {} for cat in cfg.output.keys()}
-
-        # track if data changed for conditional write
-        self.changed = False
-
-        # load existing CDB files into memory
-        self._load_existing()
-
-    def _load_existing(self):
-        """Load existing CDB files into memory at startup."""
-        for cat, fname in self.cfg.output.items():
-            path = os.path.join(self.cfg.cdb_dir, fname)
-            if not os.path.exists(path):
-                continue
-            try:
-                with open(path, "r") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or ":" not in line:
-                            continue
-                        key, value = line.split(":", 1)
-                        self.data[cat][key] = value
-            except Exception as e:
-                logging.warning(
-                    "failed_to_load_cdb category=%s path=%s error=%s", cat, path, e
-                )
-
-    def _serialize(self, ioc: dict) -> tuple:
-        """
-        Convert IOC to minimal payload for CDB storage.
-        Returns (ioc_key, payload_string, category)
-        """
-        cat = self._classify(ioc)
-        if not cat:
-            return None, None, None
-
-        key = self._key(ioc)
-        print(json.dumps(ioc))
-        payload = {}
-        match cat:
-            case "ip":
-                payload = utils.build_ip_entry(ioc)
-            case "url":
-                payload = utils.build_url_entry(ioc)
-            case "domain":
-                payload = utils.build_domain_entry(ioc)
-            case "hash":
-                payload = utils.build_file_entry(ioc)
-
-        # logging.info("IOC for payload" + json.dumps(payload))
-
-        # JSON string with minimal formatting
-        return key, json.dumps(payload).replace('"', "'"), cat
-
-    def _classify(self, ioc):
-        data = ioc.get("data", {})
-        return IOC_TYPE_MAP.get(data.get("type"))
-
-    def _key(self, ioc):
-        d = ioc.get("data", {})
-        if d.get("type") == "url":
-            return d.get("attributes", {}).get("url", d.get("id"))
-        return d.get("id")
-
-    def merge(self, iocs: list):
-        """
-        Merge a list of IOCs into store.
-        Refreshes ingestion timestamp if key already exists.
-        Returns (added_count, updated_count)
-        """
-        added = updated = 0
-        now = int(time.time())
-        for ioc in iocs:
-            key, payload, cat = self._serialize(ioc)
-            if not key:
-                continue
-            line = f"{now}|{payload}"
-            bucket = self.data[cat]
-            if key in bucket:
-                bucket[key] = line
-                updated += 1
-            else:
-                bucket[key] = line
-                added += 1
-        if added or updated:
-            self.changed = True
-        return added, updated
-
-    def write(self):
-        """
-        Write CDB lists to disk atomically.
-        Removes expired IOCs based on TTL.
-        Warns if file exceeds MAX_CDB_FILE_SIZE but preserves valid IOCs.
-        """
-        if not self.changed:
-            return
-
-        now = int(time.time())
-
-        for cat, fname in self.cfg.output.items():
-            path = os.path.join(self.cfg.cdb_dir, fname)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
-            removed = total_written = 0
-
-            with os.fdopen(fd, "w") as f:
-                for k, line in self.data[cat].items():
-                    try:
-                        ts_str, payload = line.split("|", 1)
-                        ts = int(ts_str)
-                        if now - ts > IOC_TTL:
-                            removed += 1
-                            continue
-                    except Exception:
-                        removed += 1
-                        continue
-                    f.write(f"{k}:{line}\n")
-                    total_written += 1
-
-            os.replace(tmp, path)
-            file_size = os.path.getsize(path)
-
-            if file_size > MAX_CDB_FILE_SIZE:
-                logging.warning(
-                    "file_size_exceeded category=%s size=%d bytes. Valid IOCs preserved.",
-                    cat,
-                    file_size
-                )
-
-            logging.info(
-                "cdb_write category=%s written=%d expired=%d final_size=%d bytes",
-                cat,
-                total_written,
-                removed,
-                file_size
-            )
-
-        self.changed = False
-
-
-# -------------------- fetch tasks --------------------
-
-def build_tasks(cfg, checkpoint):
-    tasks = []
-    target = latest_hour()
-    for tl in cfg.threat_lists:
-        last = checkpoint.get(tl)
-        if not last:
-            tasks.append(("latest", tl, None))
-            continue
-        start = datetime.strptime(last, "%Y%m%d%H") + timedelta(hours=1)
-        while start <= target:
-            tasks.append(("hour", tl, utc_hour(start)))
-            start += timedelta(hours=1)
-    return tasks
-
-
-def fetch_parallel(client, tasks):
-    results = []
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-
-        future_map = {}
-
-        for task in tasks:
-
-            mode, tl, hour = task
-
-            if mode == "latest":
-                future = pool.submit(client.fetch_latest, tl)
-            else:
-                future = pool.submit(client.fetch_hour, tl, hour)
-
-            future_map[future] = task
-
-        for future in as_completed(future_map):
-
-            task = future_map[future]
-
-            try:
-                result = future.result()
-                results.append((task, result))
-
-            except Exception as e:
-
-                logging.error("fetch failed task=%s error=%s", task, e)
-
-    return results
-
-
-def extract_iocs(resp):
-    if not resp:
-        return []
-    return resp.get("iocs") or resp.get("data") or []
-
-
-def process_response(task, response, store, checkpoint, metrics):
-    mode, threat_list, hour = task
-
+def main(args):
+    global debug_enabled
+    global timeout
+    global retries
     try:
-        iocs = extract_iocs(response)
-        count = len(iocs)
-
-        metrics["total_iocs"] += count
-        if mode == "hour":
-            logging.info(
-                "hourly_fetch threat_list=%s hour=%s iocs=%d",
-                threat_list,
-                hour,
-                count
-            )
+        # Read arguments
+        bad_arguments: bool = False
+        msg = ''
+        if len(args) >= 4:
+            # debug_enabled = len(args) > 4 and args[4] == 'debug'
+            if len(args) > TIMEOUT_INDEX:
+                timeout = int(args[TIMEOUT_INDEX])
+            if len(args) > RETRIES_INDEX:
+                retries = int(args[RETRIES_INDEX])
         else:
-            logging.info(
-                "latest_fetch threat_list=%s iocs=%d",
-                threat_list,
-                count
-            )
-        added, updated = store.merge(iocs)
-        metrics["added"] += added
-        metrics["updated"] += updated
-        logging.info(
-            "merge threat_list=%s added=%d updated=%d",
-            threat_list,
-            added,
-            updated
-        )
+            msg = '# Error: Wrong arguments\n'
+            bad_arguments = True
 
-        # update checkpoint safely
-        if hour:
-            checkpoint.update(threat_list, hour)
+
+        # Logging the call
+        with open(LOG_FILE, 'a') as f:
+            f.write(msg)
+
+
+        if bad_arguments:
+            debug('# Error: Exiting, bad arguments. Inputted: %s' % args)
+            sys.exit(ERR_BAD_ARGUMENTS)
+
+
+        # Core function
+        process_args(args)
+
 
     except Exception as e:
-        logging.error(
-            "processing_failure threat_list=%s hour=%s error=%s",
-            threat_list,
-            hour,
-            e
+        debug(str(e))
+        raise
+
+
+
+
+def process_args(args) -> None:
+    """This is the core function, creates a message with all valid fields
+    and overwrite or add with the optional fields
+
+
+    Parameters
+    ----------
+    args : list[str]
+        The argument list from main call
+    """
+    debug('# Running GTI script')
+
+
+    # Read args
+    alert_file_location: str = args[ALERT_INDEX]
+    apikey: str = args[APIKEY_INDEX]
+
+
+    alert_key = ""
+    oper_type = ""
+
+
+    # Load alert. Parse JSON object.
+    json_alert = get_json_alert(alert_file_location)
+    debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
+
+
+    # # Request GTI info
+    # debug(f'# Requesting GTI information {json_alert}')
+
+
+    # msg: any = request_gti_info(oper_type, json_alert, apikey)
+
+
+    # if not msg:
+    #     debug('# Error: Empty message')
+    #     raise Exception
+
+
+    # send_msg(msg, json_alert['agent'])
+
+
+
+
+def cdb_lookup(key, cdb_file):
+    """
+    Query a CDB list using cdblookup
+    """
+    try:
+        result = subprocess.run(
+            ["cdb -q", cdb_file, key],
+            capture_output=True,
+            text=True
         )
 
 
-# -------------------- main --------------------
+        value = result.stdout.strip()
 
-def main():
-    cfg = load_config("config.ini")
-    setup_logging(cfg.log_file)
-    logging.info("GTI ingestion started version=%s", VERSION)
-    lock_path = cfg.lock_file + ".lock"
+
+        if value:
+            return json.loads(value)
+
+
+    except Exception:
+        pass
+
+
+    return None
+
+
+
+
+# def extract_iocs(alert):
+#     """
+#     Extract IOCs from alert
+#     Modify depending on your log sources
+#     """
+
+
+#     iocs = {
+#         "ip": [],
+#         "domain": [],
+#         "url": [],
+#         "hash": []
+#     }
+
+
+#     data = alert.get("data", {})
+
+
+#     # IP
+#     if "srcip" in data:
+#         iocs["ip"].append(data["srcip"])
+
+
+#     if "dstip" in data:
+#         iocs["ip"].append(data["dstip"])
+
+
+#     # Domain
+#     if "domain" in data:
+#         iocs["domain"].append(data["domain"])
+
+
+#     if "hostname" in data:
+#         iocs["domain"].append(data["hostname"])
+
+
+#     # URL
+#     if "url" in data:
+#         iocs["url"].append(data["url"])
+
+
+#     # File Hash
+#     if "sha256" in data:
+#         iocs["hash"].append(data["sha256"])
+
+
+#     if "md5" in data:
+#         iocs["hash"].append(data["md5"])
+
+
+#     if "sha1" in data:
+#         iocs["hash"].append(data["sha1"])
+
+
+#     return iocs
+
+
+
+
+# def enrich(alert):
+
+
+#     iocs = extract_iocs(alert)
+
+
+#     enrichment = {}
+
+
+#     for ioc_type, values in iocs.items():
+
+
+#         cdb_file = CDB_LISTS.get(ioc_type)
+
+
+#         if not cdb_file:
+#             continue
+
+
+#         for v in values:
+
+
+#             result = cdb_lookup(v, cdb_file)
+
+
+#             if result:
+#                 enrichment.setdefault(ioc_type, {})[v] = result
+
+
+#     if enrichment:
+#         alert["gti_enrichment"] = enrichment
+
+
+#     return alert
+
+
+
+
+def read_cdb_list(file_path, key_to_check):
     try:
-        with FileLock(lock_path, timeout=0):
-            checkpoint = Checkpoint(cfg)
-            client = GTIClient(cfg)
-            store = IOCStore(cfg)
-            tasks = build_tasks(cfg, checkpoint)
-            if not tasks:
-                logging.info("nothing_to_process")
-                return
-
-            logging.info("tasks_planned=%d", len(tasks))
-
-            metrics = {
-                "total_iocs": 0,
-                "added": 0,
-                "updated": 0
-            }
-
-            processed_count = 0
-
-            try:
-
-                responses = fetch_parallel(client, tasks)
-
-                for task, response in responses:
-
-                    process_response(
-                        task,
-                        response,
-                        store,
-                        checkpoint,
-                        metrics
-                    )
-
-                    processed_count += 1
-
-                    # periodic persistence (extra safety)
-                    if processed_count % 5 == 0:
-                        store.write()
-                        checkpoint.save()
-                        logging.info(
-                            "periodic_persist processed=%d",
-                            processed_count
-                        )
-
-            except Exception as e:
-
-                logging.error("processing_loop_failure error=%s", e)
-
-            finally:
-
-                # fail-safe persistence
-                try:
-
-                    store.write()
-                    checkpoint.save()
-
-                    logging.info(
-                        "run_summary total_iocs=%d added=%d updated=%d",
-                        metrics["total_iocs"],
-                        metrics["added"],
-                        metrics["updated"]
-                    )
-
-                except Exception as e:
-
-                    logging.error("final_persist_failed error=%s", e)
-
-            logging.info("GTI ingestion finished")
-
-    except TimeoutError:
-
-        logging.warning("another_instance_running")
+        with open(file_path, "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
 
 
-if __name__ == "__main__":
-    main()
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    key = key.strip()
+                    value = value.strip()
+
+
+                    if key == key_to_check:
+                        debug(f"key check {key} {value}")
+                        return value
+    except FileNotFoundError:
+        print("The file was not found.")
+
+
+def debug(msg: str) -> None:
+    """Log the message in the log file with the timestamp, if debug flag
+    is enabled
+
+
+    Parameters
+    ----------
+    msg : str
+        The message to be logged.
+    """
+    if debug_enabled:
+        print(msg)
+        with open(LOG_FILE, 'a') as f:
+            f.write(msg + '\n')
+
+
+
+
+def request_info_from_api(oper_type, alert_key, alert, alert_output, api_key):
+    """Request information from an API using the provided alert and API key.
+
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary containing information for the API request.
+    alert_output : dict
+        The output dictionary where API response information will be stored.
+    api_key : str
+        The API key required for making the API request.
+
+
+    Returns
+    -------
+    dict
+        The response data received from the API.
+
+
+    Raises
+    ------
+    Timeout
+        If the API request times out.
+    Exception
+        If an unexpected exception occurs during the API request.
+    """
+    for attempt in range(retries + 1):
+        try:
+            if oper_type == "VULN":
+                VULN_INFO["API"] = VULN_INFO.get("API").format(alert_key)
+                VULN_INFO["HEADER"]["x-apikey"] = api_key
+                vt_response_data = query_api(VULN_INFO)
+            elif oper_type == "FILE":
+                FILE_MITRE_INFO["API"] = FILE_MITRE_INFO.get("API").format(alert_key)
+                FILE_MITRE_INFO["HEADER"]["x-apikey"] = api_key
+                vt_response_data = query_api(FILE_MITRE_INFO)
+            return vt_response_data
+        except Timeout:
+            debug('# Error: Request timed out. Remaining retries: %s' % (retries - attempt))
+            continue
+        except Exception as e:
+            debug(str(e))
+            sys.exit(ERR_NO_RESPONSE_VT)
+
+
+    debug('# Error: Request timed out and maximum number of retries was exceeded')
+    alert_output['GTI']['error'] = 408
+    alert_output['GTI']['description'] = 'Error: API request timed out'
+    send_msg(alert_output)
+    sys.exit(ERR_NO_RESPONSE_VT)
+
+
+def request_gti_info(oper_type: str, alert_key: str, alert: any, apikey: str):
+    """Generate the JSON object with the message to be send
+
+
+    Parameters
+    ----------
+    alert : any
+        JSON alert object.
+    apikey : str
+        The API key required for making the API request.
+
+
+    Returns
+    -------
+    msg: str
+        The JSON message to send
+    """
+    alert_output = {'GTI': {}, 'integration': 'GTI'}
+
+
+    # # If there is no syscheck block present in the alert. Exit.
+    # if 'syscheck' not in alert:
+    #     debug('# No syscheck block present in the alert')
+    #     return None
+
+
+    # If there is no md5 checksum present in the alert. Exit.
+    # if 'md5_after' not in alert['syscheck']:
+    #     debug('# No md5 checksum present in the alert')
+    #     return None
+
+
+    # If the md5_after field is not a md5 hash checksum. Exit
+    # if not (
+    #     isinstance(alert['syscheck']['md5_after'], str) is True
+    #     and len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert['syscheck']['md5_after'])) == 1
+    # ):
+    #     debug('# md5_after field in the alert is not a md5 hash checksum')
+    #     return None
+
+
+
+
+    # Request info using GTI API
+    if oper_type == "IP":
+        gti_response_data = read_cdb_list(GTI_MALICIOUS_IP, alert_key)
+    elif oper_type == "URL":
+        gti_response_data = read_cdb_list(GTI_MALICIOUS_URL, alert_key)
+    elif oper_type == "DOMAIN":
+        gti_response_data = read_cdb_list(GTI_MALICIOUS_DOMAIN, alert_key)
+    elif oper_type == "FILE":
+        gti_response_data = read_cdb_list(GTI_MALICIOUS_FILE_HASHES, alert_key)
+        gti_file_mitre_reponse_data = request_info_from_api(oper_type, alert_key, alert, alert_output, apikey)
+    else:
+        gti_response_data = request_info_from_api(oper_type, alert_key, alert, alert_output, apikey)
+
+
+
+
+    # alert_output['GTI']['found'] = 0
+    # alert_output['GTI']['malicious'] = 0
+
+
+    # Info about the file found in GTI
+    # if alert_output['GTI']['found'] == 1:
+    #     if gti_response_data['positives'] > 0:
+    #         alert_output['GTI']['malicious'] = 1
+
+
+    #     # Populate JSON Output object with GTI request
+    #     alert_output['GTI'].update(
+    #         {
+    #             'sha1': vt_response_data['sha1'],
+    #             'scan_date': vt_response_data['scan_date'],
+    #             'positives': vt_response_data['positives'],
+    #             'total': vt_response_data['total'],
+    #             'permalink': vt_response_data['permalink'],
+    #         }
+    #     )
+
+
+    return alert_output
+
+
+
+
+def query_api(obj: dict) -> any:
+    """Send a request to VT API and fetch information to build message
+
+
+    Parameters
+    ----------
+    hash : str
+        Hash need it for parameters
+    apikey: str
+        Authentication API
+
+
+    Returns
+    -------
+    data: any
+        JSON with the response
+
+
+    Raises
+    ------
+    Exception
+        If the status code is different than 200.
+    """
+
+
+    debug('# Querying GTI API')
+    response = requests.get(
+        obj.get("API"), headers=obj.get("HEADER"), timeout=timeout
+    )
+
+
+    if response.status_code == 200:
+        json_response = response.json()
+        vt_response_data = json_response
+        return vt_response_data
+    else:
+        alert_output = {}
+        alert_output['GTI'] = {}
+        alert_output['integration'] = 'GTI'
+
+
+        if response.status_code == 204:
+            alert_output['GTI']['error'] = response.status_code
+            alert_output['GTI']['description'] = 'Error: Public API request rate limit reached'
+            send_msg(alert_output)
+            raise Exception('# Error: GTI Public API request rate limit reached')
+        elif response.status_code == 403:
+            alert_output['GTI']['error'] = response.status_code
+            alert_output['GTI']['description'] = 'Error: Check credentials'
+            send_msg(alert_output)
+            raise Exception('# Error: GTI credentials, required privileges error')
+        else:
+            alert_output['GTI']['error'] = response.status_code
+            alert_output['GTI']['description'] = 'Error: API request fail'
+            send_msg(alert_output)
+            raise Exception('# Error: GTI credentials, required privileges error')
+
+
+
+
+def send_msg(msg: any, agent: any = None) -> None:
+    if not agent or agent['id'] == '000':
+        string = '1:GTI:{0}'.format(json.dumps(msg))
+    else:
+        location = '[{0}] ({1}) {2}'.format(agent['id'], agent['name'], agent['ip'] if 'ip' in agent else 'any')
+        location = location.replace('|', '||').replace(':', '|:')
+        string = '1:{0}->GTI:{1}'.format(location, json.dumps(msg))
+
+
+    debug('# Request result from VT server: %s' % string)
+    try:
+        sock = socket(AF_UNIX, SOCK_DGRAM)
+        sock.connect(SOCKET_ADDR)
+        sock.send(string.encode())
+        sock.close()
+    except FileNotFoundError:
+        debug('# Error: Unable to open socket connection at %s' % SOCKET_ADDR)
+        sys.exit(ERR_SOCKET_OPERATION)
+
+
+
+
+def get_json_alert(file_location: str) -> any:
+    """Read JSON alert object from file
+
+
+    Parameters
+    ----------
+    file_location : str
+        Path to the JSON file location.
+
+
+    Returns
+    -------
+    dict: any
+        The JSON object read it.
+
+
+    Raises
+    ------
+    FileNotFoundError
+        If no JSON file is found.
+    JSONDecodeError
+        If no valid JSON file are used
+    """
+    try:
+        with open(file_location) as alert_file:
+            return json.load(alert_file)
+    except FileNotFoundError:
+        debug("# JSON file for alert %s doesn't exist" % file_location)
+        sys.exit(ERR_FILE_NOT_FOUND)
+    except json.decoder.JSONDecodeError as e:
+        debug('Failed getting JSON alert. Error: %s' % e)
+        sys.exit(ERR_INVALID_JSON)
+
+
+if __name__ == '__main__':
+    main(sys.argv)
