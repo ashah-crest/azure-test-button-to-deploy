@@ -264,7 +264,6 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
           value: appInsights.properties.InstrumentationKey
         }
-
         // configuration
         {
           name: 'LOOKBACK_DAYS'
@@ -286,19 +285,16 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
           name: 'GTI_SCORE'
           value: threatScore
         }
-
         // ---- Scheduling ----
         {
           name: 'TIMER_SCHEDULE'
           value: timerSchedule
         }
-
         // ---- Key Vault ----
         {
           name: 'KEYVAULT_URI'
           value: keyVault.properties.vaultUri
         }
-
         // ---- Table Storage ----
         {
           name: 'CHECKPOINT_TABLE_NAME'
