@@ -25,7 +25,7 @@ param severities string = ''
 param threatScore string = ''
 
 @description('CRON expression for scheduling (default hourly)')
-param timerSchedule string = '0 * */1 * * *'
+param timerSchedule string = '0 */60 * * * *'
 
 @description('Object ID of deploying user for Key Vault access')
 param currentUserObjectId string

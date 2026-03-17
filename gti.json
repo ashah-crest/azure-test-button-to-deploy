@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "13387383962104572203"
+      "templateHash": "13456404678633748939"
     }
   },
   "parameters": {
@@ -59,7 +59,7 @@
     },
     "timerSchedule": {
       "type": "string",
-      "defaultValue": "0 * */1 * * *",
+      "defaultValue": "0 */60 * * * *",
       "metadata": {
         "description": "CRON expression for scheduling (default hourly)"
       }

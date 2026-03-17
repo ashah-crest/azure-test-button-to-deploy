@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "3976651198233267440"
+      "templateHash": "1622272467281644456"
     }
   },
   "parameters": {
@@ -59,7 +59,7 @@
     },
     "timerSchedule": {
       "type": "string",
-      "defaultValue": "0 * */1 * * *",
+      "defaultValue": "0 */60 * * * *",
       "metadata": {
         "description": "CRON expression for scheduling (default hourly)"
       }
@@ -292,6 +292,10 @@
             {
               "name": "AzureWebJobsStorage__credential",
               "value": "managedidentity"
+            },
+            {
+              "name": "AzureFunctionsJobHost__functionTimeout",
+              "value": "00:30:00"
             },
             {
               "name": "FUNCTIONS_WORKER_RUNTIME",
