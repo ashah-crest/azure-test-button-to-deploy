@@ -186,21 +186,21 @@ def load_config(path):
 # -------------------- logging --------------------
 
 def setup_logging(path):
-    # ensure_dir(os.path.dirname(path))
+    ensure_dir(os.path.dirname(path))
     logging.basicConfig(
-        # filename=path,
+        filename=path,
         level=logging.INFO,
         format="%(asctime)sZ %(levelname)s %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)]
+        # handlers=[logging.StreamHandler(sys.stdout)]
     )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-
-logger = logging.getLogger("GTI_SYNC")
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(asctime)s [%(levelname)s] %(message)s",
+# )
+#
+# logger = logging.getLogger("GTI_SYNC")
 
 
 # -------------------- checkpoint --------------------
