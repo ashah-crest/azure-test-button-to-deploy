@@ -1,74 +1,30 @@
-#!/usr/bin/env python3
-
 import os
 import json
+import configparser
 import logging
-import sys
-import tempfile
-import time
-from dataclasses import dataclass
-from typing import List, Optional, Dict
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Dict, Any, List, Tuple, Optional
+from datetime import datetime, timedelta, timezone
 
 import requests
-import configparser
+from filelock import FileLock
+from urllib3.exceptions import HTTPError
 
-from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from filelock import FileLock  # cross-platform lock
-
-VERSION = "1.0.0"
-API_TIMEOUT = 60
-MAX_LIMIT = 4000
-MAX_WORKERS = 6
-IOC_TTL = 60  # TTL in seconds (e.g., 7 days)
-MAX_CDB_FILE_SIZE = 50 * 1024 * 1024  # Maximum file size (for warning purposes only, bytes)
-
-THREAT_LIST_IDS = ["ransomware", "malicious-network-infrastructure", "malware", "threat-actor", "trending",
-                   "mobile", "osx", "linux", "iot", "cryptominer", "phishing", "first-stage-delivery-vectors",
-                   "vulnerability-weaponization", "infostealer"]
-SEVERITIES = ["SEVERITY_NONE", "SEVERITY_LOW", "SEVERITY_MEDIUM", "SEVERITY_HIGH", "SEVERITY_UNKNOWN"]
-VERDICTS = ["VERDICT_BENIGN", "VERDICT_UNDETECTED", "VERDICT_SUSPICIOUS", "VERDICT_MALICIOUS", "VERDICT_UNKNOWN"]
-
-IOC_TYPE_MAP = {
-    "ip_address": "ip",
-    "domain": "domain",
-    "url": "url",
-    "file": "hash"
-}
-
-IP_FIELDS = {
+WAZUH_HOME = os.environ.get("WAZUH_HOME", "/var/ossec")
+pwd = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_MAX_CONCURRENT = 10
+MAX_BACKLOG_HOURS = 7 * 24
+API_LIMIT = 4000
+IOC_FIELDS = {
     "v": "gti_assessment.verdict.value",
     "s": "gti_assessment.severity.value",
     "ts": "gti_assessment.threat_score.value",
     "lmd": "last_modification_date",
     "c": "country",
     "asn": "asn",
-    "as_owner": "as_owner"
-}
-
-URL_FIELDS = {
-    "v": "gti_assessment.verdict.value",
-    "s": "gti_assessment.severity.value",
-    "ts": "gti_assessment.threat_score.value",
-    "fsd": "first_submission_date",
-    "lsd": "last_submission_date",
-    "lmd": "last_modification_date",
-    "lad": "last_analysis_date"
-}
-
-DOMAIN_FIELDS = {
-    "v": "gti_assessment.verdict.value",
-    "s": "gti_assessment.severity.value",
-    "ts": "gti_assessment.threat_score.value",
-    "lmd": "last_modification_date",
-    "cd": "creation_date",
-}
-
-FILE_HASH_FIELDS = {
-    "v": "gti_assessment.verdict.value",
-    "s": "gti_assessment.severity.value",
-    "ts": "gti_assessment.threat_score.value",
-    "lmd": "last_modification_date",
+    "ao": "as_owner",
     "cd": "creation_date",
     "lsd": "last_submission_date",
     "lad": "last_analysis_date",
@@ -76,485 +32,426 @@ FILE_HASH_FIELDS = {
     "sha256": "sha256",
     "meaningful_name": "meaningful_name"
 }
+THREAT_LIST_IDS = [
+    "ransomware",
+    "malicious-network-infrastructure",
+    "malware",
+    "threat-actor",
+    "trending",
+    "mobile",
+    "osx",
+    "linux",
+    "iot",
+    "cryptominer",
+    "phishing",
+    "first-stage-delivery-vectors",
+    "vulnerability-weaponization",
+    "infostealer"
+]
+
+utc_now = datetime.now(timezone.utc)
 
 
-# -------------------- helpers --------------------
+def build_requests_verify() -> object:
+    ca_bundle = os.environ.get("GTI_CA_BUNDLE")
+    if ca_bundle:
+        return ca_bundle
+    return True
 
-def ensure_dir(path):
-    if path:
-        os.makedirs(path, exist_ok=True)
+
+def load_config(path: str) -> Dict[str, Any]:
+    parser = configparser.ConfigParser()
+    parser.read(path)
+
+    def get_list(section: str, key: str) -> List[str]:
+        value = parser.get(section, key, fallback="")
+        return [v.strip() for v in value.split(",") if v.strip()]
+
+    api_params = {"limit": API_LIMIT}
+    threat_score_raw = parser.get("api", "threat_score").strip()
+    threat_score_warning: Optional[str] = None
+    threat_score: Optional[int] = None
+    if threat_score_raw:
+        try:
+            threat_score = int(threat_score_raw)
+            if threat_score < 0 or threat_score > 100:
+                threat_score_warning = f"Ignoring invalid threat_score '{threat_score_raw}' (must be between 0 to 100)"
+                threat_score = None
+        except ValueError:
+            threat_score_warning = (f"Ignoring invalid threat_score '{threat_score_raw}' (must be an integer between 0 "
+                                    f"to 100)")
+            threat_score = None
+
+    if threat_score is not None:
+        api_params["query"] = f"gti_score:{threat_score}+"
+
+    return {
+        "api_key": parser.get("api", "api_key"),
+        "base_url": parser.get("api", "base_url"),
+        "threat_list_ids": get_list("api", "threat_list_ids"),
+        "api_params": api_params,
+        "threat_score_warning": threat_score_warning,
+        "severity": set(get_list("filters", "severity")),
+        "verdict": set(get_list("filters", "verdict")),
+        "ioc_lifetime": parser.getint("runtime", "ioc_lifetime_days", fallback=7),
+        "max_concurrent": DEFAULT_MAX_CONCURRENT,
+        "log_file": f"{pwd}/{parser.get('runtime', 'log_file', fallback='gti_sync.log')}",
+        "log_level": parser.get("runtime", "log_level", fallback="INFO"),
+        "files": {
+            "ip": os.path.join(WAZUH_HOME, "malicious_ips.json"),
+            "domain": os.path.join(WAZUH_HOME, "malicious_domains.json"),
+            "url": os.path.join(WAZUH_HOME, "malicious_urls.json"),
+            "file": os.path.join(WAZUH_HOME, "malicious_filehashes.json"),
+        },
+        "checkpoint_file": f"{pwd}/{parser.get('files', 'checkpoint_file')}",
+    }
 
 
-def utc_hour(dt):
+# ================= LOGGING =================
+def setup_logging(log_file: str, log_level: str) -> None:
+    os.makedirs(os.path.dirname(log_file), exist_ok=True) if os.path.dirname(log_file) else None
+    logger = logging.getLogger()
+
+    level_name = (log_level or "INFO").strip().upper()
+    level = getattr(logging, level_name, None)
+    if not isinstance(level, int):
+        level = logging.INFO
+    logger.setLevel(level)
+    if logger.handlers:
+        logger.handlers.clear()
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    fh = logging.FileHandler(log_file, encoding="utf-8")
+    fh.setLevel(level)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+
+# ================= UTILITIES ===============
+def t2_hour_utc() -> str:
+    """Return the T-2 UTC hour timestamp as YYYYMMDDHH string"""
+    dt = utc_now - timedelta(hours=2)
     return dt.strftime("%Y%m%d%H")
 
 
-def latest_hour():
-    # GTI latest available = current UTC - 2 hours
-    return datetime.utcnow() - timedelta(hours=2)
-
-
-def construct_info_dict(source_dict: dict, field_mapping: dict) -> dict:
+def generate_timestamps(last_ts_str) -> List[str]:
     """
-    Extract fields from a nested dictionary using dot notation paths.
-    
-    Args:
-        source_dict: The source dictionary with potentially nested data
-        field_mapping: A dictionary mapping output keys to dot-notation paths
-        
-    Returns:
-        A new dictionary with extracted values
-    """
-    result = {}
+    Generate hourly UTC timestamps in YYYYMMDDHH format for VT hourly API.
 
-    for output_key, path in field_mapping.items():
-        # Split the path by dots to traverse nested structure
-        keys = path.split('.')
-        value = source_dict
-        # Traverse the nested dictionary
+    :param last_ts_str: Last checkpoint timestamp in YYYYMMDDHH UTC
+    :return: List of hourly timestamps in YYYYMMDDHH format exclusive of last_ts_str
+    """
+    timestamps: List[str] = []
+    # Parse last checkpoint string to UTC datetime
+    last_dt = datetime.strptime(last_ts_str, "%Y%m%d%H").replace(tzinfo=timezone.utc)
+    # Current UTC minus 2 hours (VT API only returns up to T-2)
+    now_dt = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=2)
+    current = last_dt + timedelta(hours=1)
+    while current <= now_dt:
+        timestamps.append(current.strftime("%Y%m%d%H"))
+        current += timedelta(hours=1)
+    return timestamps
+
+
+def load_json(path: str, default: Any) -> Any:
+    if os.path.exists(path):
         try:
-            for key in keys:
-                value = value[key]
-            result[output_key] = value
-        except (KeyError, TypeError):
-            # If path doesn't exist, skip or set to None
-            result[output_key] = None
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse JSON file {path}: {e}")
+            return default
+    return default
 
+
+def save_json(path: str, data: Any) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, separators=(",", ":"), ensure_ascii=False)
+    logging.debug(f"Saved JSON file {path} with {len(data)} entries.")
+
+
+def extract_fields(item: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract specified fields from an IOC item.
+    Supports dot notation for nested fields (like attributes.url).
+    If the field doesn't exist, it is skipped.
+    """
+    result: Dict[str, Any] = {}
+    for key, path in IOC_FIELDS.items():
+        value = item
+        for part in path.split("."):
+            if not isinstance(value, dict):
+                value = None
+                break
+            value = value.get(part)
+        if value is not None:
+            result[key] = value
     return result
 
 
-# -------------------- config --------------------
-
-@dataclass
-class Config:
-    api_key: str
-    base_url: str
-    checkpoint: str
-    threat_lists: List[str]
-    severities: List[str]
-    verdicts: List[str]
-    threat_score: Optional[int]
-    cdb_dir: str
-    output: Dict[str, str]
-    log_file: str
-    lock_file: str
+def classify_ioc(item: Dict[str, Any]) -> Optional[str]:
+    t = item.get("type", "").lower()
+    if "ip" in t:
+        return "ip"
+    if "domain" in t:
+        return "domain"
+    if "url" in t:
+        return "url"
+    if "file" in t or "hash" in t:
+        return "file"
+    return None
 
 
-def load_config(path):
-    logging.info("Loading config from %s", path)
-    parser = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-    parser.read(path)
-
-    threat_lists = [
-        x.strip()
-        for x in parser.get("filters", "threat_list_ids").split(",")
-    ]
-    score = parser.get("filters", "threat_score", fallback=None)
-
-    severity_filter = parser.get("filters", "severities")
-    if severity_filter:
-        severities = [x.strip() for x in severity_filter.split(",")]
-    else:
-        severities = SEVERITIES
-
-    verdict_filter = parser.get("filters", "verdicts")
-    if verdict_filter:
-        verdicts = [x.strip() for x in verdict_filter.split(",")]
-    else:
-        verdicts = VERDICTS
-
-    return Config(
-        api_key=parser.get("gti", "api_key"),
-        base_url=parser.get("gti", "base_url"),
-        checkpoint=parser.get("gti", "checkpoint_file"),
-        threat_lists=threat_lists,
-        severities=severities,
-        verdicts=verdicts,
-        threat_score=int(score) if score else None,
-        cdb_dir=parser.get("wazuh", "cdb_dir"),
-        output={
-            "ip": parser.get("output", "ip_list"),
-            "domain": parser.get("output", "domain_list"),
-            "url": parser.get("output", "url_list"),
-            "hash": parser.get("output", "hash_list"),
-        },
-        log_file=parser.get("logging", "log_file"),
-        lock_file=parser.get("logging", "lock_file"),
-    )
+def normalize_key(ioc_type: str, key: str) -> str:
+    if ioc_type == "domain":
+        return key.lower().strip()
+    if ioc_type == "url":
+        return key.strip()
+    return key
 
 
-# -------------------- logging --------------------
-
-def setup_logging(path):
-    ensure_dir(os.path.dirname(path))
-    logging.basicConfig(
-        filename=path,
-        level=logging.INFO,
-        format="%(asctime)sZ %(levelname)s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-        # handlers=[logging.StreamHandler(sys.stdout)]
-    )
-
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s [%(levelname)s] %(message)s",
-# )
-#
-# logger = logging.getLogger("GTI_SYNC")
+def get_ioc_key(item: Dict[str, Any], ioc_type: str) -> Optional[str]:
+    if ioc_type == "url":
+        return item.get("attributes", {}).get("url")
+    return item.get("id")
 
 
-# -------------------- checkpoint --------------------
-
-class Checkpoint:
-
-    def __init__(self, cfg):
-        self.path = path = cfg.checkpoint
-        ensure_dir(os.path.dirname(path))
-        self.data = {}
-        if os.path.exists(path):
-            logging.info("Loading last checkpoint from %s", path)
-            try:
-                with open(path) as f:
-                    self.data = json.load(f)
-            except Exception:
-                logging.warning("Checkpoint corrupted resetting")
-                self.data = {}
-        else:
-            logging.info("No checkpoint found creating New")
-            for tl in cfg.threat_lists:
-                self.data[tl] = None
-
-    def get(self, k):
-        return self.data.get(k)
-
-    def update(self, k, v):
-        self.data[k] = v
-
-    def save(self):
-        with open(self.path, "w") as f:
-            json.dump(self.data, f, indent=2)
+def filter_ioc(item: Dict[str, Any], cfg: Dict[str, Any]) -> bool:
+    attr = item.get("attributes", {})
+    gti_assessment = attr.get("gti_assessment", {})
+    if cfg["severity"] and (gti_assessment.get("severity") or {}).get("value") not in cfg["severity"]:
+        return False
+    if cfg["verdict"] and (gti_assessment.get("verdict") or {}).get("value") not in cfg["verdict"]:
+        return False
+    return True
 
 
-# -------------------- GTI client --------------------
-
-class GTIClient:
-
-    def __init__(self, cfg):
-        self.base = cfg.base_url
-        self.key = cfg.api_key
-        self.score = cfg.threat_score
-
-    def _headers(self):
-        return {"accept": "application/json", "x-apikey": self.key}
-
-    def _params(self):
-        p = {"limit": MAX_LIMIT}
-        if self.score is not None:
-            p["query"] = f"gti_score:{self.score}+"
-        return p
-
-    def fetch_latest(self, tl):
-        url = f"{self.base}/threat_lists/{tl}/latest"
-        r = requests.get(url, headers=self._headers(), params=self._params(), timeout=60)
-        r.raise_for_status()
-        return r.json()
-
-    def fetch_hour(self, tl, hour):
-        url = f"{self.base}/threat_lists/{tl}/{hour}"
-        r = requests.get(url, headers=self._headers(), params=self._params(), timeout=60)
-        r.raise_for_status()
-        return r.json()
-
-
-# -------------------- IOC store --------------------
-
-class IOCStore:
-    def __init__(self, cfg: Config):
-        self.cfg = cfg
-        # ensure output directory exists
-        os.makedirs(cfg.cdb_dir, exist_ok=True)
-
-        # initialize data buckets per category
-        self.data = {cat: {} for cat in cfg.output.keys()}
-
-        # track if data changed for conditional write
-        self.changed = False
-
-        self.now = int(time.time())
-
-        # load existing CDB files into memory
-        self._load_existing()
-
-    def _load_existing(self):
-        """Load existing CDB files into memory at startup."""
-        expired = 0
-        for cat, fname in self.cfg.output.items():
-            path = os.path.join(self.cfg.cdb_dir, fname)
-            if not os.path.exists(path):
-                continue
-            try:
-                logging.info("loading CDB file path=%s", path)
-                with open(path, "r") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or ":" not in line:
-                            continue
-                        key, value = line.split(":", 1)
-                        ts_str, payload = value.split("|", 1)
-                        ts = int(ts_str)
-                        if self.now - ts > IOC_TTL:
-                            expired += 1
-                            continue  # expired IOCs removed
-                        self.data[cat][key] = value
-                logging.info("loaded CDB file path=%s expired=%d", path, expired)
-            except Exception as e:
-                logging.warning(
-                    "Failed to load CDB file path=%s error=%s", path, e
-                )
-
-    def _serialize(self, ioc: dict, cat: str) -> tuple:
-        """
-        Convert IOC to minimal payload for CDB storage.
-        Returns (ioc_key, payload_string, category)
-        """
-        data = ioc.get("data", {})
-        attr = data.get("attributes", "data")
-
-        key = self._key(ioc)
-        fields_list = {}
-        match cat:
-            case "ip":
-                fields_list = IP_FIELDS
-            case "url":
-                fields_list = URL_FIELDS
-            case "domain":
-                fields_list = DOMAIN_FIELDS
-            case "hash":
-                fields_list = FILE_HASH_FIELDS
-        payload = construct_info_dict(attr, fields_list)
-        # JSON string with minimal formatting
-        return key, json.dumps(payload).replace('"', "'")
-
-    def _classify(self, ioc):
-        data = ioc.get("data", {})
-        return IOC_TYPE_MAP.get(data.get("type"))
-
-    def _key(self, ioc):
-        d = ioc.get("data", {})
-        if d.get("type") == "url":
-            return d.get("attributes", {}).get("url", d.get("id"))
-        return d.get("id")
-
-    def merge(self, iocs: list):
-        """
-        Merge a list of IOCs into store.
-        Refreshes ingestion timestamp if key already exists.
-        Returns (added_count, updated_count)
-        """
-        added = updated = skipped = 0
-        for ioc in iocs:
-            cat = self._classify(ioc)
-            if not cat:
-                continue
-            key, payload = self._serialize(ioc, cat)
-            if not key:
-                skipped += 1
-                continue
-            line = f"{self.now}|{payload}"
-            bucket = self.data[cat]
-            if key in bucket:
-                bucket[key] = line
-                updated += 1
-            else:
-                bucket[key] = line
-                added += 1
-        if added or updated:
-            self.changed = True
-        return added, updated, skipped
-
-    def write(self):
-        """
-        Write CDB lists to disk atomically.
-        Removes expired IOCs based on TTL.
-        Warns if file exceeds MAX_CDB_FILE_SIZE but preserves valid IOCs.
-        """
-        if not self.changed:
-            return
-
-        for cat, fname in self.cfg.output.items():
-            path = os.path.join(self.cfg.cdb_dir, fname)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
-            total_written = 0
-            with os.fdopen(fd, "w") as f:
-                for k, line in self.data[cat].items():
-                    f.write(f"{k}:{line}\n")
-                    total_written += 1
-            os.replace(tmp, path)
-            file_size = os.path.getsize(path)
-            if file_size > MAX_CDB_FILE_SIZE:
-                logging.warning(
-                    "file_size_exceeded category=%s size=%d bytes. Valid IOCs preserved.",
-                    cat,
-                    file_size
-                )
-            logging.info(
-                "cdb_write category=%s written=%d final_size=%d bytes",
-                cat,
-                total_written,
-                file_size
-            )
-        self.changed = False
-        # return file_size_flag
-
-
-# -------------------- fetch tasks --------------------
-
-def build_tasks(cfg, checkpoint):
-    tasks = []
-    target = latest_hour()
-    for tl in cfg.threat_lists:
-        last = checkpoint.get(tl)
-        if not last:
-            tasks.append(("latest", tl, None))
+# ================= PROCESSING =================
+def upsert(store: Dict[str, Dict[str, Any]], items: List[Dict[str, Any]], cfg: Dict[str, Any], tl_id: str) -> Tuple[
+    int, int]:
+    added = updated = filtered = 0
+    expiry_iso = (utc_now + timedelta(days=cfg["ioc_lifetime"])).strftime("%Y%m%d%H")
+    logging.debug(f"Upserting {len(items)} IOCs from Threat List {tl_id}")
+    for item in items:
+        data = item.get("data", {})
+        if not filter_ioc(data, cfg):
+            filtered += 1
             continue
-        start = datetime.strptime(last, "%Y%m%d%H") + timedelta(hours=1)
-        while start <= target:
-            tasks.append(("hour", tl, utc_hour(start)))
-            start += timedelta(hours=1)
-    return tasks
+        ioc_type = classify_ioc(data)
+        if not ioc_type:
+            continue
+        key = get_ioc_key(data, ioc_type)
+        if not key:
+            continue
+        key = normalize_key(ioc_type, key)
+        value = {"exp": expiry_iso, **extract_fields(data.get("attributes", {}))}
+        if key in store[ioc_type]:
+            if store[ioc_type][key] != value:
+                store[ioc_type][key] = value
+                updated += 1
+        else:
+            store[ioc_type][key] = value
+            added += 1
+    logging.info(f"Threat List {tl_id}: added={added}, updated={updated}, filtered={filtered}")
+    return added, updated
 
 
-def fetch_parallel(client, tasks):
-    results = []
+def atomic_write(path: str, data: Any) -> None:
+    """
+    Atomic write with file locking to prevent concurrent corruption.
+    """
+    lock_path = f"{path}.lock"
+    lock = FileLock(lock_path, timeout=10)
+    with lock:
+        tmp = Path(path).with_suffix(".tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(data, f, separators=(",", ":"), ensure_ascii=False)
+        tmp.replace(path)
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        future_map = {}
-        for task in tasks:
-            mode, tl, hour = task
-            if mode == "latest":
-                future = pool.submit(client.fetch_latest, tl)
-            else:
-                future = pool.submit(client.fetch_hour, tl, hour)
-            future_map[future] = task
 
-        for future in as_completed(future_map):
-            task = future_map[future]
+def remove_expired(store: Dict[str, Dict[str, Any]]) -> int:
+    removed = 0
+    for ioc_type, iocs in store.items():
+        for key in list(iocs.keys()):
             try:
-                result = future.result()
-                results.append((task, result))
-            except Exception as e:
-                logging.error("fetch failed task=%s error=%s", task, e)
-    return results
+                expiry_dt = datetime.strptime(iocs[key]["exp"], "%Y%m%d%H").replace(tzinfo=timezone.utc)
+                if expiry_dt.tzinfo is None:
+                    expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+                if expiry_dt < utc_now:
+                    del iocs[key]
+                    removed += 1
+            except (ValueError, KeyError):
+                del iocs[key]
+                removed += 1
+    logging.info(f"Removed expired IOCs: {removed}")
+    return removed
 
 
-def extract_iocs(resp):
-    if not resp:
-        return []
-    return resp.get("iocs") or resp.get("data") or []
-
-
-def filter_iocs(iocs):
-    for ioc in iocs:
-        print(json.dumps(ioc))
-
-
-def process_response(task, response, store, checkpoint, metrics):
-    mode, threat_list, hour = task
-    try:
-        logging.info("Fetching for threat_list=%s hour=%s", threat_list, hour)
-        iocs = extract_iocs(response)
-        count = len(iocs)
-        metrics["total_iocs"] += count
-        logging.info("Fetched %d iocs", count)
-        added, updated, skipped = store.merge(iocs)
-        metrics["added"] += added
-        metrics["updated"] += updated
-        metrics["skipped"] += skipped
-        logging.info(
-            "merge threat_list=%s added=%d updated=%d skiipped=%d",
-            threat_list,
-            added,
-            updated,
-            skipped
+# ================= HTTP =================
+def fetch(session: requests.Session, api_object: Dict[str, Any], semaphore: threading.Semaphore, verify: object) -> \
+        List[
+            Dict[str, Any]]:
+    with semaphore:
+        resp = session.get(
+            api_object["url"],
+            headers={"x-apikey": api_object["key"]},
+            params=api_object["params"],
+            timeout=60,
+            verify=verify,
         )
-
-        # update checkpoint safely
-        if mode == "latest":
-            checkpoint.update(threat_list, utc_hour(latest_hour()))
-        elif hour:
-            checkpoint.update(threat_list, hour)
-    except Exception as e:
-        logging.error(
-            "processing_failure threat_list=%s hour=%s error=%s",
-            threat_list,
-            hour,
-            e
-        )
+        resp.raise_for_status()
+        data = resp.json()
+        iocs = data.get("iocs", [])
+        logging.debug(f"Fetched {api_object['url']}, received {len(iocs)} IOCs")
+        return iocs
 
 
-# -------------------- main --------------------
 
-def main():
-    logging.info("Execution for GTI Sync started version=%s", VERSION)
-    cfg = load_config("gti_config.ini")
-    setup_logging(cfg.log_file)
-    lock_path = cfg.lock_file + ".lock"
+def process_threat_list(tl_id, session, cfg, store, checkpoint, semaphore, verify: object, update_lock: threading.Lock):
+    # logging.info(f"Processing threat list {tl_id}")
+    api_object = {"key": cfg["api_key"], "params": cfg["api_params"]}
+    if tl_id not in checkpoint:
+        # First run → latest
+        api_object["url"] = f"{cfg['base_url']}/threat_lists/{tl_id}/latest"
+        resp = fetch(session, api_object, semaphore, verify)
+        with update_lock:
+            upsert(store, resp, cfg, tl_id)
+            checkpoint[tl_id] = t2_hour_utc()
+            logging.info(f"Checkpoint initialized: {tl_id}={checkpoint[tl_id]}")
+        return
+
+    # Backlog processing
+    timestamps = generate_timestamps(checkpoint[tl_id])
+    if len(timestamps) > MAX_BACKLOG_HOURS:
+        skipped = len(timestamps) - MAX_BACKLOG_HOURS
+        logging.warning(
+            f"{tl_id} backlog capped: skipping {skipped} hours (processing most recent {MAX_BACKLOG_HOURS} hours)")
+        timestamps = timestamps[-MAX_BACKLOG_HOURS:]
+    counter = 0
+    for ts in timestamps:
+        try:
+            api_object["url"] = f"{cfg['base_url']}/threat_lists/{tl_id}/{ts}"
+            resp = fetch(session, api_object, semaphore, verify)
+            with update_lock:
+                upsert(store, resp, cfg, tl_id)
+                # update checkpoint ONLY after success
+                checkpoint[tl_id] = ts
+                logging.debug(f"{tl_id} checkpoint -> {ts}")
+            counter += 1
+        except Exception as e:
+            logging.error(f"{tl_id} failed at {ts}: {e}")
+            break  # stop this TL, others continue
+
+
+# ================= MAIN =================
+def run(cfg: Dict[str, Any]) -> None:
+    # Load once
+    store = {k: load_json(v, {}) for k, v in cfg["files"].items()}
+    checkpoint = load_json(cfg["checkpoint_file"], {})
+    semaphore = threading.Semaphore(cfg["max_concurrent"])
+    verify = build_requests_verify()
+    update_lock = threading.Lock()
     try:
-        with FileLock(lock_path, timeout=0):
-            checkpoint = Checkpoint(cfg)
-            client = GTIClient(cfg)
-            store = IOCStore(cfg)
-            tasks = build_tasks(cfg, checkpoint)
-            if not tasks:
-                logging.info("Nothing to process, data is up to date")
-                return
-            logging.info("Number of tasks to process=%d", len(tasks))
-            metrics = {
-                "total_iocs": 0,
-                "added": 0,
-                "updated": 0,
-                "skipped": 0
-            }
-            processed_count = 0
-            try:
-                responses = fetch_parallel(client, tasks)
-                for task, response in responses:
-                    process_response(
-                        task,
-                        response,
+        with requests.Session() as session:
+            with ThreadPoolExecutor(max_workers=cfg["max_concurrent"]) as executor:
+                futures = [
+                    executor.submit(
+                        process_threat_list,
+                        tl_id,
+                        session,
+                        cfg,
                         store,
                         checkpoint,
-                        metrics
+                        semaphore,
+                        verify,
+                        update_lock,
                     )
-                    processed_count += 1
-                    # periodic persistence (extra safety)
-                    if processed_count % 5 == 0:
-                        store.write()
-                        checkpoint.save()
-                        logging.info(
-                            "periodic_persist processed=%d",
-                            processed_count
-                        )
-            except Exception as e:
-                logging.error("processing_loop_failure error=%s", e)
-            finally:
-                # fail-safe persistence
-                try:
-                    store.write()
-                    checkpoint.save()
-                    logging.info(
-                        "run_summary total_iocs=%d added=%d updated=%d skipped=%d",
-                        metrics["total_iocs"],
-                        metrics["added"],
-                        metrics["updated"],
-                        metrics["skipped"]
-                    )
-                except Exception as e:
-                    logging.error("final_persist_failed error=%s", e)
-            logging.info("GTI ingestion finished")
-    except TimeoutError:
-        logging.warning("another_instance_running")
+                    for tl_id in cfg["threat_list_ids"]
+                ]
+                for fut in as_completed(futures):
+                    fut.result()
+    except Exception as e:
+        logging.error(f"Fatal error during execution : {e}")
+    finally:
+        # FINAL SAFETY FLUSH (CRITICAL)
+        try:
+            removed = remove_expired(store)
+            for t, path in cfg["files"].items():
+                atomic_write(path, store[t])
+            atomic_write(cfg["checkpoint_file"], checkpoint)
+            logging.info(f"Final flush complete. Expired removed={removed}")
+        except Exception:
+            logging.exception("Failed during final flush")
+
+
+def validate_config(cfg: Dict[str, Any]) -> list[str]:
+    missing = []
+    SEVERITY_LEVELS = ["SEVERITY_NONE", "SEVERITY_LOW", "SEVERITY_MEDIUM", "SEVERITY_HIGH", "SEVERITY_UNKNOWN"]
+    VERDICT_LEVELS = ["VERDICT_BENIGN", "VERDICT_UNDETECTED", "VERDICT_SUSPICIOUS", "VERDICT_MALICIOUS",
+                      "VERDICT_UNKNOWN"]
+    if not cfg.get("api_key"):
+        missing.append("api.api_key")
+    if not cfg.get("base_url"):
+        missing.append("api.base_url")
+    if not cfg.get("threat_list_ids"):
+        logging.warning("No threat list selected; falling back to default all Threat Lists")
+        cfg["threat_list_ids"] = THREAT_LIST_IDS
+    if not cfg.get("severity"):
+        logging.warning(f"No Severity levels detected; falling back to the default (SEVERITY_HIGH). ")
+        cfg["severity"] = ["SEVERITY_HIGH"]
+    elif not set(cfg.get("severity")).issubset(set(SEVERITY_LEVELS)):
+        logging.warning(f"Invalid Severity levels detected; falling back to the default (SEVERITY_HIGH). ")
+        cfg["severity"] = ["SEVERITY_HIGH"]
+    if not cfg.get("verdict"):
+        logging.warning(f"No Verdict levels detected; falling back to the default (VERDICT_SUSPICIOUS,"
+                        f"VERDICT_MALICIOUS). ")
+        cfg["verdict"] = ["VERDICT_SUSPICIOUS", "VERDICT_MALICIOUS"]
+    elif not set(cfg.get("verdict")).issubset(set(VERDICT_LEVELS)):
+        logging.warning(f"Invalid Verdict levels detected; falling back to the default (VERDICT_SUSPICIOUS,"
+                        f"VERDICT_MALICIOUS). ")
+        cfg["verdict"] = ["VERDICT_SUSPICIOUS", "VERDICT_MALICIOUS"]
+    if not cfg.get("checkpoint_file"):
+        missing.append("files.checkpoint_file")
+
+    if cfg.get("threat_score_warning"):
+        logging.warning(cfg["threat_score_warning"])
+
+    log_level = str(cfg.get("log_level", "INFO") or "INFO").strip().upper()
+    if log_level == "WARN":
+        log_level = "WARNING"
+    if log_level not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        log_level = "INFO"
+        logging.warning("Invalid runtime.log_level; defaulting to INFO")
+    cfg["log_level"] = log_level
+    return missing
+
+
+def main() -> None:
+    global utc_now
+    utc_now = datetime.now(timezone.utc)
+    cfg = load_config(f"{pwd}/gti-config.ini")
+    setup_logging(cfg["log_file"], cfg.get("log_level", "INFO"))
+    logging.info("Starting GTI IOC sync")
+    try:
+        missing = validate_config(cfg)
+        if missing:
+            raise ValueError(f"Invalid configuration, missing: {', '.join(missing)}")
+        logging.info(
+            "Config loaded: "
+            f"threat_lists={len(cfg.get('threat_list_ids', []))}, "
+            f"max_concurrent={cfg.get('max_concurrent')}, "
+            f"log_level={cfg.get('log_level')}, "
+            f"checkpoint_file={cfg.get('checkpoint_file')}, "
+            f"output_files={cfg.get('files')},"
+            f"severity={cfg.get('severity')},"
+            f"verdict={cfg.get('verdict')},"
+        )
+        run(cfg)
+    except Exception as e:
+        logging.error(f"{e}")
+    finally:
+        logging.info("GTI IOC sync completed")
+
 
 
 if __name__ == "__main__":
