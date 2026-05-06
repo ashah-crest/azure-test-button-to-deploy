@@ -1,0 +1,3516 @@
+﻿Overall Integration
+
+
+
+
+  
+
+
+
+        
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+	Document Version
+	Date
+	Owner
+	Document Status
+	Comments
+	1
+	1.0.0
+	Mar 31, 2025
+	Crest Data
+	Draft
+	
+
+	2
+	1.1.0
+	Apr 23, 2026
+	Crest Data
+	Draft
+	Configuration:
+* Add support for Project ID 
+parameter
+* Add OAuth 2.0 authentication 
+support for new actions.
+Actions:
+* Get ATD Alert
+* Update ATD Alert
+Status
+* Ingest ATD Alerts 
+(On Poll)
+Playbook:
+* Close ATD Alert
+	
+
+
+
+
+
+
+
+________________
+Contents
+________________
+Contents        3
+Overview        7
+Google Threat Intelligence Platform        7
+Splunk SOAR Platform        7
+Compatibility Matrix        7
+Splunk SOAR App Architecture        8
+Data Flow Diagram        9
+Integration Use Cases        10
+Configure Asset        10
+1. Test Connectivity        11
+1.1. Action Goal        11
+1.2. Action Parameters        11
+1.3. Action Workflow        11
+1.4. Functional use cases        11
+1.5. Action Output        12
+2. Get Vulnerability Associations        13
+2.1. Action Goal        13
+2.2. Action Parameters        13
+2.3. Action Workflow        14
+2.4. Functional use cases        15
+2.5. Action Output        15
+3. Get IOC Report        24
+3.1. Action Goal        24
+3.2. Action Parameters        24
+3.3. Action Workflow        25
+3.4. Functional use cases        26
+3.5. Action Output        26
+4. Scan Private URL        31
+4.1. Action Goal        31
+4.2. Action Parameters        31
+4.3. Action Workflow        32
+4.4. Functional use cases        33
+4.5. Action Output        33
+5. Scan Private File        34
+5.1. Action Goal        34
+5.2. Action Parameters        34
+5.3. Action Workflow        36
+5.4. Functional use cases        37
+5.5. Action Output        37
+6. Get Curated Associations        39
+6.1. Action Goal        39
+6.2. Action Parameters        39
+6.3. Action Workflow        40
+6.4. Functional use cases        41
+6.5. Action Output        42
+7. Get Comments        52
+7.1. Action Goal        52
+7.2. Action Parameters        52
+7.3. Action Workflow        53
+7.4. Functional use cases        54
+7.5. Action Output        54
+8. Add Comment        56
+8.1. Action Goal        56
+8.2. Action Parameters        56
+8.3. Action Workflow        57
+8.4. Functional use cases        58
+8.5. Action Output        59
+9. Delete Comment        60
+9.1. Action Goal        60
+9.2. Action Parameters        60
+9.3. Action Workflow        61
+9.4. Functional use cases        61
+9.5. Action Output        62
+10. Get Vulnerability Report        63
+10.1. Action Goal        63
+10.2. Action Parameters        63
+10.3. Action Workflow        64
+10.4. Functional use cases        64
+10.5. Action Output        65
+11. Get File Sandbox Report        69
+11.1. Action Goal        69
+11.2. Action Parameters        69
+11.3. Action Workflow        70
+11.4. Functional use cases        71
+11.5. Action Output        71
+12. Get DNS Passive Data        74
+12.1. Action Goal        74
+12.2. Action Parameters        74
+12.3. Action Workflow        75
+12.4. Functional use cases        75
+12.5. Action Output        76
+13. Get ATD Alert        77
+13.1. Action Goal        77
+13.2. Action Parameters        77
+13.3. Action Workflow        78
+13.4. Functional use cases        79
+13.5. Action Output        79
+14. Update ATD Alert Status        80
+14.1. Action Goal        80
+14.2. Action Parameters        80
+14.3. Action Workflow        81
+14.4. Functional use cases        82
+14.5. Action Output        83
+15. Ingest ASM Issues (On Poll)        84
+15.1. Action Goal        84
+15.2. Action Parameters        84
+15.3. Action Workflow        85
+15.4. Functional Use Case        86
+15.5. Action Output        86
+16. Ingest DTM Alerts (On Poll)        87
+16.1. Action Goal        87
+16.2. Action Parameters        87
+16.3. Action Workflow        89
+16.4. Functional Use Case        89
+16.5. Action Output        89
+17. Ingest IOC Stream (On Poll)        90
+17.1. Action Goal        90
+17.2. Action Parameters        90
+17.3. Action Workflow        91
+17.4. Functional Use Case        91
+17.5. Action Output        92
+18. Ingest ATD Alerts (On Poll)        93
+18.1. Action Goal        93
+18.2. Action Parameters        93
+18.3. Action Workflow        94
+18.4. Functional Use Case        94
+18.5. Checkpoint and Deduplication Mechanism        95
+18.6. Action Output        95
+Playbook Development        96
+Close ASM Issue        96
+Close DTM Alert        96
+Vulnerability Enrichment and Ticket Creation        96
+IOC Enrichment Orchestrator        96
+IOC Enrichment and Blocking        96
+Phishing Triage and Response        97
+Phishing Domain Enrichment        97
+DTM Alert Incident Response        97
+ASM Alert Incident Response        97
+IOCs Curated Threat Intelligence Enrichment        97
+Scan Private File        97
+Scan Private URL        97
+Close ATD Alert        98
+Logging        99
+Limitations        99
+Known Issues        99
+________________
+Overview
+________________
+Google Threat Intelligence Platform
+Google Threat Intelligence provides a comprehensive and proactive approach to identifying, analyzing, and mitigating security threats. Leveraging Google’s vast infrastructure, global telemetry, and advanced analytics, it delivers actionable insights to enhance an organization’s security posture. Google Threat Intelligence offers capabilities such as threat detection, analysis of malware and phishing campaigns, real-time threat alerts, and intelligence feeds that integrate seamlessly with security tools like SIEM (Security Information and Event Management) and SOAR (Security Orchestration, Automation, and Response) platforms.
+Splunk SOAR Platform
+Splunk SOAR is a Security Orchestration, Automation, and Response (SOAR) Platform. It combines security infrastructure orchestration, playbook automation, and case management capabilities to integrate the team, processes, and tools. The majority of the companies use SOAR tools for the below-mentioned objectives.
+* To automate repetitive tasks to increase practical team efforts and provide attention to mission-critical decisions. 
+* To perform automated investigations and reduce the turnaround time to such critical decision-making situations using extensive playbooks designed on the Splunk SOAR Platform.
+* To integrate the existing security infrastructure to ensure the active participation of each part in the security defense workflow. 
+
+
+
+
+
+
+Compatibility Matrix
+________________
+
+
+* Google Threat Intelligence API Version - v3, v1beta
+* Minimum Splunk SOAR Platform Version -7.1.0.225
+* OS Platforms - Linux (for Splunk SOAR Platform deployment)
+* Python version - Py3 Compatible
+
+
+Splunk SOAR App Architecture
+________________
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Data Flow Diagram
+________________
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Integration Use Cases
+________________
+
+
+This section describes the use cases provided as a part of this integration.
+Configure Asset
+Steps to Configure the Google Threat Intelligence Splunk SOAR’s asset
+Follow these steps to create an asset for the Splunk SOAR Platform:
+1. Log in to the Google Threat Intelligence Platform.
+* From the Left Navbar/Menu click API Key.
+* Access your API key.
+* To obtain the project id, in the URL when accessing GTI Alerts 
+   * for example, in https://proactive.virustotal.com/alerts?...&project=projects%2F**your-project-id**
+the Project ID is your-project-id
+
+
+2. Log in to your Splunk SOAR Platform.
+* Navigate to the Home dropdown and select Apps.
+* Search Google Threat Intelligence from the search box.
+* Click on the CONFIGURE NEW ASSET button.
+* Navigate to the Asset Info tab and enter the Asset name and Asset description.
+* Navigate to the Asset Settings and paste the API key of your Google Threat Intelligence Platform.
+* Add the Project ID of your GTI instance in the Project ID parameter.
+* Save the asset.
+* Now, test the connectivity of the Splunk SOAR server to the Google Threat Intelligence by clicking the TEST CONNECTIVITY button. 
+
+
+
+
+
+
+
+
+
+
+1. Test Connectivity
+   1. Action Goal
+Initiate a connection to the Google Threat Intelligence system to validate the asset configuration
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	API Key
+	String
+	Yes
+	N/A
+	Google Threat Intelligence API Key
+	   3. Action Workflow
+This action will make a rest call to Google Threat Intelligence to check, if the connection is made successful or not. It uses OAUTH 2.0 authentication for Ingest ATD Alerts On Poll, Get ATD Alerts and Update ATD Alert Status Actions.
+   4. Functional use cases
+The functional use case of the connectivity action is to validate the provided asset configuration parameters.
+
+
+Endpoint:
+ 
+GET https://www.virustotal.com/api/v3/me
+
+
+Authentication for Ingest ATD Alerts On Poll, Get ATD Alerts and Update ATD Alert Status Actions
+
+
+POST https://idp.prod.identity.proactive.virustotal.com/realms/master/exchange/api-key 
+
+
+Body parameters:
+api_key : API Key of the GTI platform
+
+
+NOTE: The API call fails with 403 for requests module’s User-Agent. Passing the below headers works when using requests module:
+{
+"Content-Type": "application/json",
+“User-Agent": "SplunkSoar",
+                }
+
+
+   5. Action Output
+The action displays the success or failure message based on the API response. For a successful run, it displays ‘Test Connectivity to Google Threat Intelligence Passed’ output message and in case of failure scenarios, it displays the message ‘Test Connectivity to Google Threat Intelligence Failed’ with an appropriate output error response.
+For the Authentication for Ingest ATD Alerts On Poll, Get ATD Alerts and Update ATD Alert Status Actions, the access token is stored in the state file.
+________________
+2. Get Vulnerability Associations
+   1. Action Goal
+The goal of this action is to be able to get vulnerabilities based on a given entity.
+
+
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Entity
+	String
+	Yes
+	N/A
+	Entity (IP, URL, File, Domain) to fetch vulnerability
+	Limit
+	Number
+	No
+	N/A
+	Maximum number of vulnerabilities to retrieve
+	Password
+	String
+	No
+	N/A
+	Optional, password to decompress and scan a file contained in a protected ZIP file.
+	   3. Action Workflow
+       
+
+
+   4. Functional use cases
+Endpoint:
+For File:
+
+
+GET https://www.virustotal.com/api/v3/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST https://bigfiles.virustotal.com/_ah/upload/{{url_id}}/
+Parameters:
+Body: form-data:
+file= {{file}}
+
+
+GET https://www.virustotal.com/api/v3/analyses/{{file_id}}
+
+
+GET https://www.virustotal.com/api/v3/files/{{entity_id}}/vulnerabilities
+
+
+For IP Address :
+ 
+        GET https://www.virustotal.com/api/v3/ip_addresses/{{entity}}/vulnerabilities 
+
+
+For Domain:
+ 
+        GET https://www.virustotal.com/api/v3/domains/{{entity}}/vulnerabilities 
+
+
+For URL:
+
+
+POST https://www.virustotal.com/api/v3/urls
+Parameters
+Body: form-data:
+url= {{url}}
+GET https://www.virustotal.com/api/v3/analyses/{{url_id}}
+
+
+GET https://www.virustotal.com/api/v3/urls/{{entity_id}}/vulnerabilities 
+   5. Action Output
+      * action_result.status
+      * action_result.parameter.entity
+      * action_result.data
+      * action_result.data.*.data.*.id
+      * action_result.data.*.data.*.type
+      * action_result.data.*.data.*.links.self
+      * action_result.data.*.data.*.attributes.sources.*.name
+      * action_result.data.*.data.*.attributes.sources.*.md5
+      * action_result.data.*.data.*.attributes.sources.*.published_date
+      * action_result.data.*.data.*.attributes.sources.*.unique_id
+      * action_result.data.*.data.*.attributes.sources.*.title
+      * action_result.data.*.data.*.attributes.sources.*.source_description
+      * action_result.data.*.data.*.attributes.sources.*.cvss.cvssv3_x_translated
+      * action_result.data.*.data.*.attributes.sources.*.cvss.cvssv2_0
+      * action_result.data.*.data.*.attributes.sources.*.cvss.cvssv3_x.vector
+      * action_result.data.*.data.*.attributes.sources.*.cvss.cvssv3_x.base_score
+      * action_result.data.*.data.*.attributes.sources.*.cvss.cvssv3_x.temporal_score
+      * action_result.data.*.data.*.attributes.sources.*.cvss.cvssv4_x
+      * action_result.data.*.data.*.attributes.sources.*.url
+      * action_result.data.*.data.*.attributes.targeted_regions_hierarchy.*
+      * action_result.data.*.data.*.attributes.technologies.*
+      * action_result.data.*.data.*.attributes.days_to_patch
+      * action_result.data.*.data.*.attributes.threat_scape.*
+      * action_result.data.*.data.*.attributes.name
+      * action_result.data.*.data.*.attributes.status
+      * action_result.data.*.data.*.attributes.targeted_regions.*
+      * action_result.data.*.data.*.attributes.recent_activity_summary.*
+      * action_result.data.*.data.*.attributes.references_count
+      * action_result.data.*.data.*.attributes.exploitation_vectors.*
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.name
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.md5
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.published_date
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.unique_id
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.title
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.source_description
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.cvss
+      * action_result.data.*.data.*.attributes.vendor_fix_references.*.url
+      * action_result.data.*.data.*.attributes.operating_systems.*
+      * action_result.data.*.data.*.attributes.alt_names_details.*.last_seen
+      * action_result.data.*.data.*.attributes.alt_names_details.*.value
+      * action_result.data.*.data.*.attributes.alt_names_details.*.confidence
+      * action_result.data.*.data.*.attributes.alt_names_details.*.description
+      * action_result.data.*.data.*.attributes.alt_names_details.*.first_seen
+      * action_result.data.*.data.*.attributes.top_icon_md5.*
+      * action_result.data.*.data.*.attributes.creation_date
+      * action_result.data.*.data.*.attributes.intended_effects.*
+      * action_result.data.*.data.*.attributes.exploitation.tech_details_release_date
+      * action_result.data.*.data.*.attributes.exploitation.first_exploitation
+      * action_result.data.*.data.*.attributes.exploitation.exploit_release_date
+      * action_result.data.*.data.*.attributes.affected_systems.*
+      * action_result.data.*.data.*.attributes.targeted_informations.*
+      * action_result.data.*.data.*.attributes.malware_roles.*
+      * action_result.data.*.data.*.attributes.field_sources.*.field
+      * action_result.data.*.data.*.attributes.field_sources.*.source.sources.*
+      * action_result.data.*.data.*.attributes.field_sources.*.source.source_name
+      * action_result.data.*.data.*.attributes.field_sources.*.source.field_type
+      * action_result.data.*.data.*.attributes.field_sources.*.source.source_url
+      * action_result.data.*.data.*.attributes.autogenerated_tags.*
+      * action_result.data.*.data.*.attributes.exploitation_state
+      * action_result.data.*.data.*.attributes.available_mitigation.*
+      * action_result.data.*.data.*.attributes.risk_factors.*
+      * action_result.data.*.data.*.attributes.ip_addresses_count
+      * action_result.data.*.data.*.attributes.mve_id
+      * action_result.data.*.data.*.attributes.collection_links.*
+      * action_result.data.*.data.*.attributes.urls_count
+      * action_result.data.*.data.*.attributes.date_of_disclosure
+      * action_result.data.*.data.*.attributes.exploit_availability
+      * action_result.data.*.data.*.attributes.last_seen_details.*
+      * action_result.data.*.data.*.attributes.merged_actors.*
+      * action_result.data.*.data.*.attributes.predicted_risk_rating
+      * action_result.data.*.data.*.attributes.epss.percentile
+      * action_result.data.*.data.*.attributes.epss.score
+      * action_result.data.*.data.*.attributes.mati_genids_dict.mve_id
+      * action_result.data.*.data.*.attributes.mati_genids_dict.cve_id
+      * action_result.data.*.data.*.attributes.mati_genids_dict.report_id
+      * action_result.data.*.data.*.attributes.origin
+      * action_result.data.*.data.*.attributes.recent_activity_relative_change
+      * action_result.data.*.data.*.attributes.last_modification_date
+      * action_result.data.*.data.*.attributes.workarounds.*
+      * action_result.data.*.data.*.attributes.capabilities.*
+      * action_result.data.*.data.*.attributes.counters.files
+      * action_result.data.*.data.*.attributes.counters.domains
+      * action_result.data.*.data.*.attributes.counters.ip_addresses
+      * action_result.data.*.data.*.attributes.counters.urls
+      * action_result.data.*.data.*.attributes.counters.iocs
+      * action_result.data.*.data.*.attributes.counters.subscribers
+      * action_result.data.*.data.*.attributes.counters.attack_techniques
+      * action_result.data.*.data.*.attributes.targeted_industries.*
+      * action_result.data.*.data.*.attributes.vulnerable_products
+      * action_result.data.*.data.*.attributes.risk_rating
+      * action_result.data.*.data.*.attributes.first_seen_details.*
+      * action_result.data.*.data.*.attributes.alt_names.*
+      * action_result.data.*.data.*.attributes.private
+      * action_result.data.*.data.*.attributes.days_to_report
+      * action_result.data.*.data.*.attributes.cisa_known_exploited.ransomware_use
+      * action_result.data.*.data.*.attributes.cisa_known_exploited.added_date
+      * action_result.data.*.data.*.attributes.cisa_known_exploited.due_date
+      * action_result.data.*.data.*.attributes.detection_names.*
+      * action_result.data.*.data.*.attributes.summary_stats.first_submission_date.min
+      * action_result.data.*.data.*.attributes.summary_stats.first_submission_date.max
+      * action_result.data.*.data.*.attributes.summary_stats.first_submission_date.avg
+      * action_result.data.*.data.*.attributes.summary_stats.last_submission_date.min
+      * action_result.data.*.data.*.attributes.summary_stats.last_submission_date.max
+      * action_result.data.*.data.*.attributes.summary_stats.last_submission_date.avg
+      * action_result.data.*.data.*.attributes.summary_stats.files_detections.min
+      * action_result.data.*.data.*.attributes.summary_stats.files_detections.max
+      * action_result.data.*.data.*.attributes.summary_stats.files_detections.avg
+      * action_result.data.*.data.*.attributes.tags_details.*.last_seen
+      * action_result.data.*.data.*.attributes.tags_details.*.value
+      * action_result.data.*.data.*.attributes.tags_details.*.confidence
+      * action_result.data.*.data.*.attributes.tags_details.*.description
+      * action_result.data.*.data.*.attributes.tags_details.*.first_seen
+      * action_result.data.*.data.*.attributes.analysis
+      * action_result.data.*.data.*.attributes.cpes.*.end_rel
+      * action_result.data.*.data.*.attributes.cpes.*.start_cpe
+      * action_result.data.*.data.*.attributes.cpes.*.start_rel
+      * action_result.data.*.data.*.attributes.cpes.*.end_cpe.vendor
+      * action_result.data.*.data.*.attributes.cpes.*.end_cpe.uri
+      * action_result.data.*.data.*.attributes.cpes.*.end_cpe.version
+      * action_result.data.*.data.*.attributes.cpes.*.end_cpe.product
+      * action_result.data.*.data.*.attributes.targeted_industries_tree.*
+      * action_result.data.*.data.*.attributes.collection_type
+      * action_result.data.*.data.*.attributes.cvss.cvssv2_0.vector
+      * action_result.data.*.data.*.attributes.cvss.cvssv2_0.base_score
+      * action_result.data.*.data.*.attributes.cvss.cvssv2_0.temporal_score
+      * action_result.data.*.data.*.attributes.cvss.cvssv3_x.vector
+      * action_result.data.*.data.*.attributes.cvss.cvssv3_x.base_score
+      * action_result.data.*.data.*.attributes.cvss.cvssv3_x.temporal_score
+      * action_result.data.*.data.*.attributes.cve_id
+      * action_result.data.*.data.*.attributes.domains_count
+      * action_result.data.*.data.*.attributes.mitigations.*
+      * action_result.data.*.data.*.attributes.exploitation_consequence
+      * action_result.data.*.data.*.attributes.version_history.*.date
+      * action_result.data.*.data.*.attributes.version_history.*.version_notes.*
+      * action_result.data.*.data.*.attributes.source_regions_hierarchy.*
+      * action_result.data.*.data.*.attributes.cwe.id
+      * action_result.data.*.data.*.attributes.cwe.title
+      * action_result.data.*.data.*.attributes.subscribers_count
+      * action_result.data.*.data.*.attributes.files_count
+      * action_result.data.*.data.*.attributes.tags.*
+      * action_result.data.*.data.*.attributes.motivations.*
+      * action_result.data.*.data.*.attributes.executive_summary
+      * action_result.data.*.data.*.attributes.description
+      * action_result.data.*.data.*.attributes.priority
+      * action_result.data.*.data.*.attributes.aggregations.files.itw_urls.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.itw_urls.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.itw_urls.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.itw_urls.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_urls.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_urls.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_urls.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_urls.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_domains.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_domains.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_domains.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_domains.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_ips.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_ips.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_ips.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.contacted_ips.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.compressed_parents.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.compressed_parents.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.compressed_parents.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.compressed_parents.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_sha256.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_sha256.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_sha256.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_sha256.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.tags.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.tags.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.vhash.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.vhash.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.vhash.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.vhash.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.behash.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.behash.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.behash.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.behash.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.tlshhash.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.tlshhash.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.tlshhash.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.tlshhash.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.value.id
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.value.ruleset_id
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.value.ruleset_name
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.value.rule_name
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.value.source
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.crowdsourced_yara_results.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_domains.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_domains.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_domains.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_domains.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_ips.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_ips.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_ips.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_ips.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_urls.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_urls.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_urls.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.embedded_urls.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_created.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_created.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_created.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_created.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_opened.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_opened.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_opened.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.mutexes_opened.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_deleted.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_deleted.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_deleted.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_deleted.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_opened.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_opened.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_opened.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_opened.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_set.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_set.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_set.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.registry_keys_set.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.file_types.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.file_types.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_path.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_path.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_path.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.dropped_files_path.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.filecondis_dhash.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.filecondis_dhash.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.filecondis_dhash.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.filecondis_dhash.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.sandbox_verdicts.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.sandbox_verdicts.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.sandbox_verdicts.*.sandbox_name
+      * action_result.data.*.data.*.attributes.aggregations.files.popular_threat_category.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.popular_threat_category.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.popular_threat_name.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.popular_threat_name.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.suggested_threat_label
+      * action_result.data.*.data.*.attributes.aggregations.files.attack_techniques.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.attack_techniques.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.attack_techniques.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.attack_techniques.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.memory_pattern_urls.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.memory_pattern_urls.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.memory_pattern_urls.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.memory_pattern_urls.*.prevalence
+      * action_result.data.*.data.*.attributes.aggregations.files.attack_tactics.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.attack_tactics.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.parent_contacted_domains.*.value
+      * action_result.data.*.data.*.attributes.aggregations.files.parent_contacted_domains.*.count
+      * action_result.data.*.data.*.attributes.aggregations.files.parent_contacted_domains.*.total_related
+      * action_result.data.*.data.*.attributes.aggregations.files.parent_contacted_domains.*.prevalence
+      * action_result.data.*.data.*.context_attributes.shared_with_me
+      * action_result.data.*.data.*.context_attributes.role
+      * action_result.data.*.meta.count
+      * action_result.data.*.links.self
+      * action_result.message
+      * action_result.summary
+      * summary.total_objects
+      * summary.total_objects_successful\
+________________
+
+
+3. Get IOC Report
+   1. Action Goal
+The goal of this action is to be able to get the report based on a given entity.
+
+
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Entity
+	String
+	Yes
+	N/A
+	Entity (IP, URL, File, Domain) to get the report
+	Password
+	String
+	No
+	N/A
+	Optional, password to decompress and scan a file contained in a protected ZIP file.
+	
+
+   3. Action Workflow  
+
+
+   4. Functional use cases
+              Endpoint:
+ 
+For File:
+        
+GET https://www.virustotal.com/api/v3/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST https://bigfiles.virustotal.com/_ah/upload/{{url_id}}/
+Parameters:
+Body: form-data:
+file= {{file}}
+
+
+GET https://www.virustotal.com/api/v3/analyses/{{file_id}}
+
+
+GET https://www.virustotal.com/api/v3/files/{{SHA-256}}
+
+
+For IP Address:
+ 
+        GET https://www.virustotal.com/api/v3/ip_addresses/{{ip_adddress}} 
+
+
+For Domain:
+ 
+        GET https://www.virustotal.com/api/v3/domains/{{domain}} 
+
+
+For URL:
+
+
+POST https://www.virustotal.com/api/v3/urls
+Parameters:
+Body: form-data:
+url= {{url}}
+
+
+GET https://www.virustotal.com/api/v3/analyses/{{url_id}}
+
+
+GET https://www.virustotal.com/api/v3/urls/{url_idl}
+ 
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.entity
+   * action_result.data
+   * action_result.data.*.data.id
+   * action_result.data.*.data.type
+   * action_result.data.*.data.links.self
+   * action_result.data.*.data.attributes.regional_internet_registry
+   * action_result.data.*.data.attributes.jarm
+   * action_result.data.*.data.attributes.reputation
+   * action_result.data.*.data.attributes.mandiant_ic_score
+   * action_result.data.*.data.attributes.tags.*
+   * action_result.data.*.data.attributes.last_analysis_date
+   * action_result.data.*.data.attributes.as_owner
+   * action_result.data.*.data.attributes.threat_severity.version
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_level
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.num_detections
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.has_bad_communicating_files_high
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.has_bad_communicating_files_medium
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.belongs_to_bad_collection
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.belongs_to_threat_actor
+   * action_result.data.*.data.attributes.threat_severity.last_analysis_date
+   * action_result.data.*.data.attributes.threat_severity.level_description
+   * action_result.data.*.data.attributes.asn
+   * action_result.data.*.data.attributes.first_seen_itw_date
+   * action_result.data.*.data.attributes.last_seen_itw_date
+   * action_result.data.*.data.attributes.country
+   * action_result.data.*.data.attributes.last_analysis_results.*.method
+   * action_result.data.*.data.attributes.last_analysis_results.*.engine_name
+   * action_result.data.*.data.attributes.last_analysis_results.*.category
+   * action_result.data.*.data.attributes.last_analysis_results.*.result
+   * action_result.data.*.data.attributes.last_analysis_results.*.engine_version
+   * action_result.data.*.data.attributes.last_analysis_results.*.engine_update
+   * action_result.data.*.data.attributes.whois
+   * action_result.data.*.data.attributes.last_analysis_stats.malicious
+   * action_result.data.*.data.attributes.last_analysis_stats.suspicious
+   * action_result.data.*.data.attributes.last_analysis_stats.undetected
+   * action_result.data.*.data.attributes.last_analysis_stats.harmless
+   * action_result.data.*.data.attributes.last_analysis_stats.timeout
+   * action_result.data.*.data.attributes.last_analysis_stats.confirmed-timeout
+   * action_result.data.*.data.attributes.last_analysis_stats.failure
+   * action_result.data.*.data.attributes.last_analysis_stats.type-unsupported
+   * action_result.data.*.data.attributes.network
+   * action_result.data.*.data.attributes.last_modification_date
+   * action_result.data.*.data.attributes.whois_date
+   * action_result.data.*.data.attributes.continent
+   * action_result.data.*.data.attributes.total_votes.harmless
+   * action_result.data.*.data.attributes.total_votes.malicious
+   * action_result.data.*.data.attributes.expiration_date
+   * action_result.data.*.data.attributes.last_dns_records.*.type
+   * action_result.data.*.data.attributes.last_dns_records.*.value
+   * action_result.data.*.data.attributes.last_dns_records.*.ttl
+   * action_result.data.*.data.attributes.categories.Forcepoint ThreatSeeker
+   * action_result.data.*.data.attributes.categories.BitDefender
+   * action_result.data.*.data.attributes.categories.Xcitium Verdict Cloud
+   * action_result.data.*.data.attributes.categories.Sophos
+   * action_result.data.*.data.attributes.creation_date
+   * action_result.data.*.data.attributes.last_https_certificate_date
+   * action_result.data.*.data.attributes.registrar
+   * action_result.data.*.data.attributes.last_dns_records_date
+   * action_result.data.*.data.attributes.tld
+   * action_result.data.*.data.attributes.popularity_ranks.Cisco Umbrella.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Cisco Umbrella.timestamp
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.rsa.key_size
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.rsa.modulus
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.rsa.exponent
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.algorithm
+   * action_result.data.*.data.attributes.last_https_certificate.thumbprint_sha256
+   * action_result.data.*.data.attributes.last_https_certificate.tags.*
+   * action_result.data.*.data.attributes.last_https_certificate.signature_algorithm
+   * action_result.data.*.data.attributes.last_https_certificate.subject.OU
+   * action_result.data.*.data.attributes.last_https_certificate.subject.CN
+   * action_result.data.*.data.attributes.last_https_certificate.validity.not_after
+   * action_result.data.*.data.attributes.last_https_certificate.validity.not_before
+   * action_result.data.*.data.attributes.last_https_certificate.version
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.certificate_policies.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.extended_key_usage.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.authority_key_identifier.keyid
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.subject_alternative_name.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.tags.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.subject_key_identifier
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.crl_distribution_points.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.key_usage.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.1.3.6.1.4.1.11129.2.4.2
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.CA
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.ca_information_access.CA Issuers
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.ca_information_access.OCSP
+   * action_result.data.*.data.attributes.last_https_certificate.cert_signature.signature
+   * action_result.data.*.data.attributes.last_https_certificate.cert_signature.signature_algorithm
+   * action_result.data.*.data.attributes.last_https_certificate.serial_number
+   * action_result.data.*.data.attributes.last_https_certificate.thumbprint
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.C
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.CN
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.L
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.O
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.ST
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.OU
+   * action_result.data.*.data.attributes.last_https_certificate.size
+   * action_result.data.*.data.attributes.last_update_date
+   * action_result.data.*.data.attributes.last_http_response_headers.Location
+   * action_result.data.*.data.attributes.last_http_response_headers.Cache-Control
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Type
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only
+   * action_result.data.*.data.attributes.last_http_response_headers.Cross-Origin-Opener-Policy
+   * action_result.data.*.data.attributes.last_http_response_headers.Report-To
+   * action_result.data.*.data.attributes.last_http_response_headers.Permissions-Policy
+   * action_result.data.*.data.attributes.last_http_response_headers.Date
+   * action_result.data.*.data.attributes.last_http_response_headers.Server
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Length
+   * action_result.data.*.data.attributes.last_http_response_headers.X-XSS-Protection
+   * action_result.data.*.data.attributes.last_http_response_headers.X-Frame-Options
+   * action_result.data.*.data.attributes.last_http_response_headers.Set-Cookie
+   * action_result.data.*.data.attributes.last_http_response_cookies.AEC
+   * action_result.data.*.data.attributes.last_http_response_code
+   * action_result.data.*.data.attributes.last_http_response_content_length
+   * action_result.data.*.data.attributes.last_final_url
+   * action_result.data.*.data.attributes.first_submission_date
+   * action_result.data.*.data.attributes.favicon.raw_md5
+   * action_result.data.*.data.attributes.favicon.dhash
+   * action_result.data.*.data.attributes.last_submission_date
+   * action_result.data.*.data.attributes.times_submitted
+   * action_result.data.*.data.attributes.has_content
+   * action_result.data.*.data.attributes.title
+   * action_result.data.*.data.attributes.url
+   * action_result.data.*.data.attributes.redirection_chain.*
+   * action_result.data.*.data.attributes.last_http_response_content_sha256
+   * action_result.data.*.data.attributes.threat_names.*
+   * action_result.data.*.data.attributes.meaningful_name
+   * action_result.data.*.data.attributes.magic
+   * action_result.data.*.data.attributes.type_tags.*
+   * action_result.data.*.data.attributes.ssdeep
+   * action_result.data.*.data.attributes.exiftool.MIMEType
+   * action_result.data.*.data.attributes.exiftool.FileType
+   * action_result.data.*.data.attributes.exiftool.WordCount
+   * action_result.data.*.data.attributes.exiftool.LineCount
+   * action_result.data.*.data.attributes.exiftool.MIMEEncoding
+   * action_result.data.*.data.attributes.exiftool.FileTypeExtension
+   * action_result.data.*.data.attributes.exiftool.Newlines
+   * action_result.data.*.data.attributes.sha256
+   * action_result.data.*.data.attributes.sha1
+   * action_result.data.*.data.attributes.md5
+   * action_result.data.*.data.attributes.type_extension
+   * action_result.data.*.data.attributes.magika
+   * action_result.data.*.data.attributes.size
+   * action_result.data.*.data.attributes.available_tools.*
+   * action_result.data.*.data.attributes.type_tag
+   * action_result.data.*.data.attributes.filecondis.raw_md5
+   * action_result.data.*.data.attributes.filecondis.dhash
+   * action_result.data.*.data.attributes.type_description
+   * action_result.data.*.data.attributes.names.*
+   * action_result.data.*.data.attributes.unique_sources
+   * action_result.data.*.data.attributes.downloadable
+   * action_result.data.*.data.attributes.tlsh
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+   4. Scan Private URL
+   1. Action Goal
+The goal of this action is to be able to get the report based on a given private URL.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	URL
+	String
+	Yes
+	N/A
+	URL to get the report
+	User Agent
+	String
+	No
+	-
+	User agent string.
+	sandboxes
+	String
+	No
+	-
+	Comma separated eg: cape_win,zenbox_windows possible values cape_win and zenbox_windows.
+	Retention Period Days
+	Number
+	No
+	-
+	Optional, number of days the report and URL are kept in VT (between 1 and 28). If not set it defaults to the group's retention policy preference (1 day by default).
+	Storage Region
+	String
+	No
+	-
+	Optional, storage region where the URL will be stored. By default uses the group's private_scanning.storage_region preference. Allowed values are US, CA, EU, GB
+	Interaction Sandbox
+	String
+	No
+	-
+	Select the sandbox desired for interactive use, possible values cape_win.
+	Interaction Timeout
+	Number
+	No
+	-
+	Interaction timeout in seconds, minimum value: 60. (1 minute.) Max value: 1800: (30 minutes)
+	*Parameters may be omitted based on their necessity for the effective execution of the SOAR action.
+
+
+
+
+   3. Action Workflow
+                            
+   4. Functional use cases
+        Endpoint:
+
+
+POST: https://www.virustotal.com/api/v3/private/urls
+Parameters:
+Body: form-data:
+url= {{url}}
+
+
+GET https://www.virustotal.com/api/v3/private/analyses/{{id}}
+
+
+GET https://www.virustotal.com/api/v3/private/urls/{{url_id}}
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.url
+   * action_result.data
+   * action_result.data.*.data.id
+   * action_result.data.*.data.type
+   * action_result.data.*.data.links.self
+   * action_result.data.*.data.attributes.favicon.raw_md5
+   * action_result.data.*.data.attributes.favicon.dhash
+   * action_result.data.*.data.attributes.tld
+   * action_result.data.*.data.attributes.expiration
+   * action_result.data.*.data.attributes.url
+   * action_result.data.*.data.attributes.last_final_url
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+________________
+
+
+   5. Scan Private File
+   1. Action Goal
+The goal of this action is to be able to get the report based on a given private file.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Vault id
+	String
+	Yes
+	N/A
+	Vault id of file to get the report
+	retention_period_days
+	Number
+	No
+	-
+	Optional, number of days the report and URL are kept in VT (between 1 and 28). If not set it defaults to the group's retention policy preference (1 day by default).
+	storage_region
+	String
+	No
+	-
+	Optional, storage region where the URL will be stored. By default uses the group's private_scanning.storage_region preference. Allowed values are US, CA, EU, GB
+	interaction_sandbox
+	String
+	No
+	-
+	Select the sandbox desired for interactive use, possible values cape_win.
+	interaction_timeout
+	Number
+	No
+	-
+	Interaction timeout in seconds, minimum value: 60. (1 minute.) Max value: 1800: (30 minutes)
+	command_line
+	String
+	No
+	-
+	Command line arguments to use when running the file in sandboxes.
+	disable_sandbox
+	String
+	No
+	-
+	If true, then the file won't be detonated in sandbox environments. False by default.
+	enable_internet
+	String
+	No
+	-
+	If the file should have internet access when running in sandboxes. False by default.
+	intercept_tls
+	String
+	No
+	-
+	Intercept HTTPS/TLS/SSL communication. Intercept HTTPS to view encrypted URLS, hostnames and HTTP headers. This is detectable by any sample that checks certificates, and makes JA3 hashes unusable.
+	password
+	String
+	No
+	-
+	Optional, password to decompress and scan a file contained in a protected ZIP file.
+	locale
+	String
+	No
+	-
+	Preferred sandbox locale. On windows this selection will change the language and keyboard settings of the analysis machine.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*Parameters may be omitted based on their necessity for the effective execution of the SOAR action.
+
+
+   3. Action Workflow
+                            
+   4. Functional use cases
+        Endpoint:
+ 
+For File:
+        
+GET: https://www.virustotal.com/api/v3/private/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST: https://bigfiles.virustotal.com/_ah/upload/{{url_id}}
+Parameters:
+Body: form-data:
+file= {{file}}
+
+
+GET: https://www.virustotal.com/api/v3/private/analyses/{{id}}
+
+
+GET: https://www.virustotal.com/api/v3/private/files//{{SHA-256}}
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.vault_id
+   * action_result.data
+   * action_result.data.*.data.id
+   * action_result.data.*.data.type
+   * action_result.data.*.data.links.self
+   * action_result.data.*.data.attributes.meaningful_name
+   * action_result.data.*.data.attributes.trid.*.file_type
+   * action_result.data.*.data.attributes.trid.*.probability
+   * action_result.data.*.data.attributes.ssdeep
+   * action_result.data.*.data.attributes.sha1
+   * action_result.data.*.data.attributes.javascript_info.tags.*
+   * action_result.data.*.data.attributes.type_tag
+   * action_result.data.*.data.attributes.expiration
+   * action_result.data.*.data.attributes.names.*
+   * action_result.data.*.data.attributes.exiftool.MIMEType
+   * action_result.data.*.data.attributes.exiftool.FileType
+   * action_result.data.*.data.attributes.exiftool.WordCount
+   * action_result.data.*.data.attributes.exiftool.LineCount
+   * action_result.data.*.data.attributes.exiftool.MIMEEncoding
+   * action_result.data.*.data.attributes.exiftool.FileTypeExtension
+   * action_result.data.*.data.attributes.exiftool.Newlines
+   * action_result.data.*.data.attributes.tags.*
+   * action_result.data.*.data.attributes.available_tools.*
+   * action_result.data.*.data.attributes.magika
+   * action_result.data.*.data.attributes.type_description
+   * action_result.data.*.data.attributes.size
+   * action_result.data.*.data.attributes.magic
+   * action_result.data.*.data.attributes.sha256
+   * action_result.data.*.data.attributes.last_analysis_date
+   * action_result.data.*.data.attributes.type_extension
+   * action_result.data.*.data.attributes.crowdsourced_ai_results.*.source
+   * action_result.data.*.data.attributes.crowdsourced_ai_results.*.id
+   * action_result.data.*.data.attributes.crowdsourced_ai_results.*.analysis
+   * action_result.data.*.data.attributes.crowdsourced_ai_results.*.category
+   * action_result.data.*.data.attributes.crowdsourced_ai_results.*.last_modification_date
+   * action_result.data.*.data.attributes.crowdsourced_ai_results.*.creation_date
+   * action_result.data.*.data.attributes.type_tags.*
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.ruleset_id
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.ruleset_version
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.ruleset_name
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.rule_name
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.match_date
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.description
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.author
+   * action_result.data.*.data.attributes.crowdsourced_yara_results.*.source
+   * action_result.data.*.data.attributes.tlsh
+   * action_result.data.*.data.attributes.threat_severity.version
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_level
+   * action_result.data.*.data.attributes.threat_severity.last_analysis_date
+   * action_result.data.*.data.attributes.threat_severity.level_description
+   * action_result.data.*.data.attributes.md5
+   * action_result.data.*.data.attributes.threat_verdict
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+   6. Get Curated Associations
+   1. Action Goal
+The goal of this action is to retrieve curated threat intelligence data, which includes details about threats actors, malware families, campaigns and reports.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Entity
+	String
+	Yes
+	N/A
+	Entity (IP, URL, File, Domain) to get report
+	Password
+	String
+	No
+	N/A
+	Optional, password to decompress and scan a file contained in a protected ZIP file.
+	
+
+   3. Action Workflow
+  
+
+   4. Functional use cases
+Endpoint:
+ 
+Query Parameters:
+   * relationships:malware_families,related_threat_actors,campaigns,reports
+   * relationship_attributes[malware_families]:name,id,origin,collection_type,description,targeted_regions,targeted_industries,sponsor_region
+   * relationship_attributes[related_threat_actors]:name,id,origin,collection_type,description,targeted_regions,targeted_industries,sponsor_region
+   * relationship_attributes[campaigns]:name,id,origin,collection_type,description,targeted_regions,targeted_industries,sponsor_region
+   * relationship_attributes[reports]:name,id,collection_type,origin,source_regions_hierarchy,targeted_industries_tree,targeted_regions_hierarchy
+
+
+For IP Address:
+        
+GET https://www.virustotal.com/api/v3/ip_addresses/{{ip}}
+ 
+For File:
+
+
+GET https://www.virustotal.com/api/v3/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST https://bigfiles.virustotal.com/_ah/upload/{{url_id}}/
+Parameters
+Body: form-data:
+file= {{file}}
+
+
+GET https://www.virustotal.com/api/v3/analyses/{{file_id}}
+        
+GET https://www.virustotal.com/api/v3/files/{{file_id}}
+
+
+For Domain:
+
+
+GET https://www.virustotal.com/api/v3/domains/{{domain}}
+
+
+For URL:
+
+
+        POST https://www.virustotal.com/api/v3/urls
+Parameters
+Body: form-data:
+url= {{url}}
+
+
+GET https://www.virustotal.com/api/v3/analyses/{{url_id}}
+
+
+GET https://www.virustotal.com/api/v3/urls/{{url_id}}
+
+
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.entity
+   * action_result.data
+   * action_result.data.*.data.id
+   * action_result.data.*.data.type
+   * action_result.data.*.data.links.self
+   * action_result.data.*.data.attributes.last_analysis_stats.malicious
+   * action_result.data.*.data.attributes.last_analysis_stats.suspicious
+   * action_result.data.*.data.attributes.last_analysis_stats.undetected
+   * action_result.data.*.data.attributes.last_analysis_stats.harmless
+   * action_result.data.*.data.attributes.last_analysis_stats.timeout
+   * action_result.data.*.data.attributes.last_analysis_stats.confirmed-timeout
+   * action_result.data.*.data.attributes.last_analysis_stats.failure
+   * action_result.data.*.data.attributes.last_analysis_stats.type-unsupported
+   * action_result.data.*.data.attributes.as_owner
+   * action_result.data.*.data.attributes.mandiant_ic_score
+   * action_result.data.*.data.attributes.first_seen_itw_date
+   * action_result.data.*.data.attributes.last_https_certificate_date
+   * action_result.data.*.data.attributes.last_seen_itw_date
+   * action_result.data.*.data.attributes.whois
+   * action_result.data.*.data.attributes.last_modification_date
+   * action_result.data.*.data.attributes.reputation
+   * action_result.data.*.data.attributes.tags.*
+   * action_result.data.*.data.attributes.last_analysis_date
+   * action_result.data.*.data.attributes.network
+   * action_result.data.*.data.attributes.whois_date
+   * action_result.data.*.data.attributes.jarm
+   * action_result.data.*.data.attributes.asn
+   * action_result.data.*.data.attributes.last_analysis_results.*.method
+   * action_result.data.*.data.attributes.last_analysis_results.*.engine_name
+   * action_result.data.*.data.attributes.last_analysis_results.*.category
+   * action_result.data.*.data.attributes.last_analysis_results.*.result
+   * action_result.data.*.data.attributes.last_analysis_results.*.engine_version
+   * action_result.data.*.data.attributes.last_analysis_results.*.engine_update
+   * action_result.data.*.data.attributes.threat_severity.version
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_level
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.has_bad_communicating_files_high
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.has_bad_communicating_files_medium
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.belongs_to_bad_collection
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.domain_rank
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.popular_threat_category
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.num_gav_detections
+   * action_result.data.*.data.attributes.threat_severity.threat_severity_data.belongs_to_threat_actor
+   * action_result.data.*.data.attributes.threat_severity.last_analysis_date
+   * action_result.data.*.data.attributes.threat_severity.level_description
+   * action_result.data.*.data.attributes.last_https_certificate.cert_signature.signature_algorithm
+   * action_result.data.*.data.attributes.last_https_certificate.cert_signature.signature
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.authority_key_identifier.keyid
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.subject_key_identifier
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.subject_alternative_name.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.certificate_policies.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.key_usage.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.extended_key_usage.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.crl_distribution_points.*
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.ca_information_access.OCSP
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.ca_information_access.CA Issuers
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.CA
+   * action_result.data.*.data.attributes.last_https_certificate.extensions.1.3.6.1.4.1.11129.2.4.2
+   * action_result.data.*.data.attributes.last_https_certificate.validity.not_after
+   * action_result.data.*.data.attributes.last_https_certificate.validity.not_before
+   * action_result.data.*.data.attributes.last_https_certificate.size
+   * action_result.data.*.data.attributes.last_https_certificate.version
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.algorithm
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.ec.oid
+   * action_result.data.*.data.attributes.last_https_certificate.public_key.ec.pub
+   * action_result.data.*.data.attributes.last_https_certificate.thumbprint_sha256
+   * action_result.data.*.data.attributes.last_https_certificate.thumbprint
+   * action_result.data.*.data.attributes.last_https_certificate.serial_number
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.C
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.O
+   * action_result.data.*.data.attributes.last_https_certificate.issuer.CN
+   * action_result.data.*.data.attributes.last_https_certificate.subject.C
+   * action_result.data.*.data.attributes.last_https_certificate.subject.ST
+   * action_result.data.*.data.attributes.last_https_certificate.subject.L
+   * action_result.data.*.data.attributes.last_https_certificate.subject.O
+   * action_result.data.*.data.attributes.last_https_certificate.subject.CN
+   * action_result.data.*.data.attributes.total_votes.harmless
+   * action_result.data.*.data.attributes.total_votes.malicious
+   * action_result.data.*.data.attributes.has_content
+   * action_result.data.*.data.attributes.last_http_response_cookies.AEC
+   * action_result.data.*.data.attributes.last_http_response_cookies.NID
+   * action_result.data.*.data.attributes.redirection_chain.*
+   * action_result.data.*.data.attributes.threat_names.*
+   * action_result.data.*.data.attributes.last_final_url
+   * action_result.data.*.data.attributes.last_http_response_content_length
+   * action_result.data.*.data.attributes.times_submitted
+   * action_result.data.*.data.attributes.last_http_response_content_sha256
+   * action_result.data.*.data.attributes.tld
+   * action_result.data.*.data.attributes.url
+   * action_result.data.*.data.attributes.last_submission_date
+   * action_result.data.*.data.attributes.html_meta.viewport.*
+   * action_result.data.*.data.attributes.html_meta.format-detection.*
+   * action_result.data.*.data.attributes.html_meta.referrer.*
+   * action_result.data.*.data.attributes.html_meta.google.*
+   * action_result.data.*.data.attributes.first_submission_date
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Type
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only
+   * action_result.data.*.data.attributes.last_http_response_headers.Accept-CH
+   * action_result.data.*.data.attributes.last_http_response_headers.Permissions-Policy
+   * action_result.data.*.data.attributes.last_http_response_headers.X-Goog-ZStatus
+   * action_result.data.*.data.attributes.last_http_response_headers.P3P
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Encoding
+   * action_result.data.*.data.attributes.last_http_response_headers.Date
+   * action_result.data.*.data.attributes.last_http_response_headers.Server
+   * action_result.data.*.data.attributes.last_http_response_headers.Content-Length
+   * action_result.data.*.data.attributes.last_http_response_headers.X-XSS-Protection
+   * action_result.data.*.data.attributes.last_http_response_headers.X-Frame-Options
+   * action_result.data.*.data.attributes.last_http_response_headers.Expires
+   * action_result.data.*.data.attributes.last_http_response_headers.Cache-Control
+   * action_result.data.*.data.attributes.last_http_response_headers.Set-Cookie
+   * action_result.data.*.data.attributes.last_http_response_headers.Alt-Svc
+   * action_result.data.*.data.attributes.favicon.raw_md5
+   * action_result.data.*.data.attributes.favicon.dhash
+   * action_result.data.*.data.attributes.last_http_response_code
+   * action_result.data.*.data.attributes.title
+   * action_result.data.*.data.attributes.categories.Sophos
+   * action_result.data.*.data.attributes.categories.Forcepoint ThreatSeeker
+   * action_result.data.*.data.attributes.categories.Xcitium Verdict Cloud
+   * action_result.data.*.data.attributes.categories.alphaMountain.ai
+   * action_result.data.*.data.attributes.categories.BitDefender
+   * action_result.data.*.data.attributes.popularity_ranks.Majestic.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Majestic.timestamp
+   * action_result.data.*.data.attributes.popularity_ranks.Statvoo.timestamp
+   * action_result.data.*.data.attributes.popularity_ranks.Statvoo.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Alexa.timestamp
+   * action_result.data.*.data.attributes.popularity_ranks.Alexa.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Cisco Umbrella.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Cisco Umbrella.timestamp
+   * action_result.data.*.data.attributes.popularity_ranks.Quantcast.timestamp
+   * action_result.data.*.data.attributes.popularity_ranks.Quantcast.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Cloudflare Radar.rank
+   * action_result.data.*.data.attributes.popularity_ranks.Cloudflare Radar.timestamp
+   * action_result.data.*.data.attributes.last_dns_records_date
+   * action_result.data.*.data.attributes.last_update_date
+   * action_result.data.*.data.attributes.expiration_date
+   * action_result.data.*.data.attributes.rdap.handle
+   * action_result.data.*.data.attributes.rdap.ldh_name
+   * action_result.data.*.data.attributes.rdap.events.*.event_action
+   * action_result.data.*.data.attributes.rdap.events.*.event_date
+   * action_result.data.*.data.attributes.rdap.events.*.event_actor
+   * action_result.data.*.data.attributes.rdap.events.*.links.*
+   * action_result.data.*.data.attributes.rdap.notices.*.title
+   * action_result.data.*.data.attributes.rdap.notices.*.description.*
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.href
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.rel
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.type
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.value
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.title
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.media
+   * action_result.data.*.data.attributes.rdap.notices.*.links.*.href_lang.*
+   * action_result.data.*.data.attributes.rdap.notices.*.type
+   * action_result.data.*.data.attributes.rdap.nameservers.*.ldh_name
+   * action_result.data.*.data.attributes.rdap.nameservers.*.events.*.event_action
+   * action_result.data.*.data.attributes.rdap.nameservers.*.events.*.event_date
+   * action_result.data.*.data.attributes.rdap.nameservers.*.events.*.event_actor
+   * action_result.data.*.data.attributes.rdap.nameservers.*.events.*.links.*
+   * action_result.data.*.data.attributes.rdap.nameservers.*.object_class_name
+   * action_result.data.*.data.attributes.rdap.nameservers.*.status.*
+   * action_result.data.*.data.attributes.rdap.nameservers.*.handle
+   * action_result.data.*.data.attributes.rdap.nameservers.*.unicode_name
+   * action_result.data.*.data.attributes.rdap.nameservers.*.links.*
+   * action_result.data.*.data.attributes.rdap.nameservers.*.notices.*
+   * action_result.data.*.data.attributes.rdap.nameservers.*.lang
+   * action_result.data.*.data.attributes.rdap.nameservers.*.port43
+   * action_result.data.*.data.attributes.rdap.nameservers.*.entities.*
+   * action_result.data.*.data.attributes.rdap.nameservers.*.remarks.*
+   * action_result.data.*.data.attributes.rdap.rdap_conformance.*
+   * action_result.data.*.data.attributes.rdap.entities.*.object_class_name
+   * action_result.data.*.data.attributes.rdap.entities.*.handle
+   * action_result.data.*.data.attributes.rdap.entities.*.vcard_array.*.name
+   * action_result.data.*.data.attributes.rdap.entities.*.vcard_array.*.type
+   * action_result.data.*.data.attributes.rdap.entities.*.vcard_array.*.values.*
+   * action_result.data.*.data.attributes.rdap.entities.*.roles.*
+   * action_result.data.*.data.attributes.rdap.entities.*.remarks.*.title
+   * action_result.data.*.data.attributes.rdap.entities.*.remarks.*.description.*
+   * action_result.data.*.data.attributes.rdap.entities.*.remarks.*.type
+   * action_result.data.*.data.attributes.rdap.entities.*.remarks.*.links.*
+   * action_result.data.*.data.attributes.rdap.entities.*.events.*.event_action
+   * action_result.data.*.data.attributes.rdap.entities.*.events.*.event_date
+   * action_result.data.*.data.attributes.rdap.entities.*.events.*.event_actor
+   * action_result.data.*.data.attributes.rdap.entities.*.events.*.links.*
+   * action_result.data.*.data.attributes.rdap.entities.*.public_ids.*
+   * action_result.data.*.data.attributes.rdap.entities.*.entities.*
+   * action_result.data.*.data.attributes.rdap.entities.*.links.*
+   * action_result.data.*.data.attributes.rdap.entities.*.as_event_actor.*
+   * action_result.data.*.data.attributes.rdap.entities.*.status.*
+   * action_result.data.*.data.attributes.rdap.entities.*.port43
+   * action_result.data.*.data.attributes.rdap.entities.*.networks.*
+   * action_result.data.*.data.attributes.rdap.entities.*.autnums.*
+   * action_result.data.*.data.attributes.rdap.entities.*.url
+   * action_result.data.*.data.attributes.rdap.entities.*.lang
+   * action_result.data.*.data.attributes.rdap.entities.*.rdap_conformance.*
+   * action_result.data.*.data.attributes.rdap.object_class_name
+   * action_result.data.*.data.attributes.rdap.status.*
+   * action_result.data.*.data.attributes.rdap.secure_dns.delegation_signed
+   * action_result.data.*.data.attributes.rdap.secure_dns.zone_signed
+   * action_result.data.*.data.attributes.rdap.secure_dns.max_sig_life
+   * action_result.data.*.data.attributes.rdap.secure_dns.ds_data.*
+   * action_result.data.*.data.attributes.rdap.secure_dns.key_data.*
+   * action_result.data.*.data.attributes.rdap.port43
+   * action_result.data.*.data.attributes.rdap.unicode_name
+   * action_result.data.*.data.attributes.rdap.punycode
+   * action_result.data.*.data.attributes.rdap.type
+   * action_result.data.*.data.attributes.rdap.links.*
+   * action_result.data.*.data.attributes.rdap.switch_name
+   * action_result.data.*.data.attributes.rdap.public_ids.*
+   * action_result.data.*.data.attributes.rdap.lang
+   * action_result.data.*.data.attributes.rdap.remarks.*
+   * action_result.data.*.data.attributes.rdap.nask0_state
+   * action_result.data.*.data.attributes.rdap.variants.*
+   * action_result.data.*.data.attributes.creation_date
+   * action_result.data.*.data.attributes.registrar
+   * action_result.data.*.data.attributes.last_dns_records.*.type
+   * action_result.data.*.data.attributes.last_dns_records.*.ttl
+   * action_result.data.*.data.attributes.last_dns_records.*.value
+   * action_result.data.*.data.attributes.meaningful_name
+   * action_result.data.*.data.attributes.ssdeep
+   * action_result.data.*.data.attributes.exiftool.ZipRequiredVersion
+   * action_result.data.*.data.attributes.exiftool.MIMEType
+   * action_result.data.*.data.attributes.exiftool.ZipCRC
+   * action_result.data.*.data.attributes.exiftool.FileType
+   * action_result.data.*.data.attributes.exiftool.ZipCompression
+   * action_result.data.*.data.attributes.exiftool.ZipUncompressedSize
+   * action_result.data.*.data.attributes.exiftool.ZipCompressedSize
+   * action_result.data.*.data.attributes.exiftool.FileTypeExtension
+   * action_result.data.*.data.attributes.exiftool.ZipFileName
+   * action_result.data.*.data.attributes.exiftool.ZipBitFlag
+   * action_result.data.*.data.attributes.exiftool.ZipModifyDate
+   * action_result.data.*.data.attributes.sha1
+   * action_result.data.*.data.attributes.available_tools.*
+   * action_result.data.*.data.attributes.popular_threat_classification.popular_threat_name.*.count
+   * action_result.data.*.data.attributes.popular_threat_classification.popular_threat_name.*.value
+   * action_result.data.*.data.attributes.popular_threat_classification.popular_threat_category.*.count
+   * action_result.data.*.data.attributes.popular_threat_classification.popular_threat_category.*.value
+   * action_result.data.*.data.attributes.popular_threat_classification.suggested_threat_label
+   * action_result.data.*.data.attributes.size
+   * action_result.data.*.data.attributes.magika
+   * action_result.data.*.data.attributes.sandbox_verdicts.DAS-Security Orcas.category
+   * action_result.data.*.data.attributes.sandbox_verdicts.DAS-Security Orcas.sandbox_name
+   * action_result.data.*.data.attributes.sandbox_verdicts.DAS-Security Orcas.malware_classification.*
+   * action_result.data.*.data.attributes.tlsh
+   * action_result.data.*.data.attributes.md5
+   * action_result.data.*.data.attributes.autostart_locations.*.entry
+   * action_result.data.*.data.attributes.magic
+   * action_result.data.*.data.attributes.unique_sources
+   * action_result.data.*.data.attributes.sha256
+   * action_result.data.*.data.attributes.type_description
+   * action_result.data.*.data.attributes.trid.*.file_type
+   * action_result.data.*.data.attributes.trid.*.probability
+   * action_result.data.*.data.attributes.type_extension
+   * action_result.data.*.data.attributes.downloadable
+   * action_result.data.*.data.attributes.bundle_info.highest_datetime
+   * action_result.data.*.data.attributes.bundle_info.lowest_datetime
+   * action_result.data.*.data.attributes.bundle_info.num_children
+   * action_result.data.*.data.attributes.bundle_info.extensions.exe
+   * action_result.data.*.data.attributes.bundle_info.file_types.Portable Executable
+   * action_result.data.*.data.attributes.bundle_info.type
+   * action_result.data.*.data.attributes.bundle_info.uncompressed_size
+   * action_result.data.*.data.attributes.vhash
+   * action_result.data.*.data.attributes.type_tag
+   * action_result.data.*.data.attributes.packers.F-PROT
+   * action_result.data.*.data.attributes.packers.Cyren
+   * action_result.data.*.data.attributes.packers.Varist
+   * action_result.data.*.data.attributes.type_tags.*
+   * action_result.data.*.data.attributes.names.*
+   * action_result.data.*.data.relationships.campaigns.data.*
+   * action_result.data.*.data.relationships.campaigns.links.self
+   * action_result.data.*.data.relationships.malware_families.data.*.id
+   * action_result.data.*.data.relationships.malware_families.data.*.type
+   * action_result.data.*.data.relationships.malware_families.data.*.links.self
+   * action_result.data.*.data.relationships.malware_families.data.*.attributes.name
+   * action_result.data.*.data.relationships.malware_families.data.*.attributes.description
+   * action_result.data.*.data.relationships.malware_families.data.*.attributes.targeted_regions.*
+   * action_result.data.*.data.relationships.malware_families.data.*.attributes.origin
+   * action_result.data.*.data.relationships.malware_families.data.*.attributes.collection_type
+   * action_result.data.*.data.relationships.malware_families.data.*.attributes.targeted_industries.*
+   * action_result.data.*.data.relationships.malware_families.data.*.context_attributes.shared_with_me
+   * action_result.data.*.data.relationships.malware_families.data.*.context_attributes.role
+   * action_result.data.*.data.relationships.malware_families.links.self
+   * action_result.data.*.data.relationships.malware_families.links.next
+   * action_result.data.*.data.relationships.malware_families.meta.cursor
+   * action_result.data.*.data.relationships.reports.data.*.id
+   * action_result.data.*.data.relationships.reports.data.*.type
+   * action_result.data.*.data.relationships.reports.data.*.links.self
+   * action_result.data.*.data.relationships.reports.data.*.attributes.name
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.region
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.sub_region
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.country
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.country_iso2
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.confidence
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.first_seen
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.last_seen
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.description
+   * action_result.data.*.data.relationships.reports.data.*.attributes.source_regions_hierarchy.*.source
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.region
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.sub_region
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.country
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.country_iso2
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.confidence
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.first_seen
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.last_seen
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.description
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_regions_hierarchy.*.source
+   * action_result.data.*.data.relationships.reports.data.*.attributes.origin
+   * action_result.data.*.data.relationships.reports.data.*.attributes.collection_type
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.industry_group
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.industry
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.confidence
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.first_seen
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.last_seen
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.description
+   * action_result.data.*.data.relationships.reports.data.*.attributes.targeted_industries_tree.*.source
+   * action_result.data.*.data.relationships.reports.data.*.context_attributes.shared_with_me
+   * action_result.data.*.data.relationships.reports.data.*.context_attributes.role
+   * action_result.data.*.data.relationships.reports.meta.cursor
+   * action_result.data.*.data.relationships.reports.links.self
+   * action_result.data.*.data.relationships.reports.links.next
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.id
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.type
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.links.self
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.attributes.origin
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.attributes.name
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.attributes.targeted_industries.*
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.attributes.collection_type
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.attributes.description
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.attributes.targeted_regions.*
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.context_attributes.shared_with_me
+   * action_result.data.*.data.relationships.related_threat_actors.data.*.context_attributes.role
+   * action_result.data.*.data.relationships.related_threat_actors.links.self
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+
+
+________________
+
+
+   7. Get Comments
+   1. Action Goal
+The goal of this action is to retrieve comments associated with a specific entity, such as an IP address, URL, domain, or file.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Entity
+	String
+	Yes
+	N/A
+	Entity (IP, URL, File, Domain) for which to get comments. 
+	Limit
+	Integer
+	No
+	10
+	Maximum number of comments to retrieve
+	Password
+	String
+	No
+	N/A
+	Optional, password to decompress and scan a file contained in a protected ZIP file.
+	
+
+   3. Action Workflow
+  
+
+   4. Functional use cases
+Endpoint:
+
+
+For IP Address:
+GET: https://www.virustotal.com/api/v3/ip_addresses/{{ip}}/comments 
+
+
+For Domain:
+GET: https://www.virustotal.com/api/v3/domains/{{domain}}/comments 
+
+
+For URL:
+POST: https://www.virustotal.com/api/v3/urls
+Parameters:
+Body: form-data:
+url= {{url}}
+
+
+GET: https://www.virustotal.com/api/v3/analyses/{{url_id}}
+
+
+GET: https://www.virustotal.com/api/v3/urls/{{url_id}}/comments 
+
+
+For File:
+GET: https://www.virustotal.com/api/v3/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST: https://bigfiles.virustotal.com/_ah/upload/{{url_id}}/
+Parameters:
+Body: form-data:
+file= {{file}}
+
+
+GET: https://www.virustotal.com/api/v3/analyses/{{file_id}}
+
+
+GET: https://www.virustotal.com/api/v3/files/{{file_id}}/comments 
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.entity
+   * action_result.parameter.limit
+   * action_result.parameter.cursor
+   * action_result.data
+   * action_result.data.*.data.*.id
+   * action_result.data.*.data.*.type
+   * action_result.data.*.data.*.links.self
+   * action_result.data.*.data.*.attributes.text
+   * action_result.data.*.data.*.attributes.tags.*
+   * action_result.data.*.data.*.attributes.date
+   * action_result.data.*.data.*.attributes.votes.positive
+   * action_result.data.*.data.*.attributes.votes.negative
+   * action_result.data.*.data.*.attributes.votes.abuse
+   * action_result.data.*.data.*.attributes.html
+   * action_result.data.*.meta.count
+   * action_result.data.*.meta.cursor
+   * action_result.data.*.links.self
+   * action_result.data.*.links.next
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+________________
+
+
+   8. Add Comment
+   1. Action Goal
+The goal of this action is to add a comment to a specified entity—such as an IP address, file, domain, or URL.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Entity
+	String
+	Yes
+	N/A
+	Entity (IP, URL, File, Domain) for adding a comment
+	Comment
+	String
+	Yes
+	N/A
+	Comment to be added to the entity
+	Password
+	String
+	No
+	N/A
+	Optional, password to decompress and scan a file contained in a protected ZIP file.
+	
+
+   3. Action Workflow
+  
+
+   4. Functional use cases
+Endpoint:
+
+
+Body:
+{
+    "data": {
+        "type": "comment",
+        "attributes": {
+            "text":{{comment}}
+        }
+    }
+}
+
+
+For IP Address:
+POST: https://www.virustotal.com/api/v3/ip_addresses/{{ip}}/comments 
+
+
+For Domain:
+POST: https://www.virustotal.com/api/v3/domains/{{domain}}/comments 
+
+
+For URL:
+POST: https://www.virustotal.com/api/v3/urls
+Parameters:
+Body: form-data:
+url= {{url}}
+
+
+GET: https://www.virustotal.com/api/v3/analyses/{{url_id}}
+
+
+POST: https://www.virustotal.com/api/v3/urls/{{url_id}}/comments 
+
+
+For File:
+GET: https://www.virustotal.com/api/v3/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST: https://bigfiles.virustotal.com/_ah/upload/{{url_id}}/
+Parameters:
+Body: form-data:
+file= {{file}}
+
+
+GET: https://www.virustotal.com/api/v3/analyses/{{file_id}}
+
+
+POST: https://www.virustotal.com/api/v3/files/{{file_id}}/comments 
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.entity
+   * action_result.parameter.data_type
+   * action_result.parameter.data_attributes_text
+   * action_result.data
+   * action_result.data.*.data.id
+   * action_result.data.*.data.type
+   * action_result.data.*.data.links.self
+   * action_result.data.*.data.attributes.text
+   * action_result.data.*.data.attributes.html
+   * action_result.data.*.data.attributes.tags.*
+   * action_result.data.*.data.attributes.votes.positive
+   * action_result.data.*.data.attributes.votes.negative
+   * action_result.data.*.data.attributes.votes.abuse
+   * action_result.data.*.data.attributes.date,
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * Summary.total_objects_successful
+________________
+
+
+   9. Delete Comment
+   1. Action Goal
+The goal of this action is to delete an existing comment associated with an entity(such as an IP address, file, domain, or URL).
+
+
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Comment ID
+	String
+	Yes
+	N/A
+	ID of the comment to be deleted
+
+	
+
+
+
+   3. Action Workflow
+  
+
+   4. Functional use cases
+Endpoint
+
+
+DELETE: https://www.virustotal.com/api/v3/comments/{{comment_id}}
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.comment_id
+   * action_result.data
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * Summary.total_objects_successful
+________________
+
+
+   10. Get Vulnerability Report
+   1. Action Goal
+The goal of this action is to get the vulnerability details for the given vulnerability ID
+   2. Action Parameters
+
+
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Vulnerability ID
+	String
+	Yes
+	N/A
+	Vulnerability ID
+	
+
+
+
+
+
+   3. Action Workflow
+        
+   4. Functional use cases
+Endpoint
+
+
+GET: https://www.virustotal.com/api/v3/collections/{{CVE_id}} 
+
+
+   5. Action Output
+   * action_result.status
+   * action_result.data
+   * action_result.data.*.data.id
+   * action_result.data.*.data.type
+   * action_result.data.*.data.links.self
+   * action_result.data.*.data.attributes.description
+   * action_result.data.*.data.attributes.analysis
+   * action_result.data.*.data.attributes.autogenerated_tags.*
+   * action_result.data.*.data.attributes.exploitation_vectors.*
+   * action_result.data.*.data.attributes.cwe.id
+   * action_result.data.*.data.attributes.cwe.title
+   * action_result.data.*.data.attributes.malware_roles.*
+   * action_result.data.*.data.attributes.exploitation_state
+   * action_result.data.*.data.attributes.creation_date
+   * action_result.data.*.data.attributes.exploit_availability
+   * action_result.data.*.data.attributes.affected_systems.*
+   * action_result.data.*.data.attributes.alt_names.*
+   * action_result.data.*.data.attributes.counters.files
+   * action_result.data.*.data.attributes.counters.domains
+   * action_result.data.*.data.attributes.counters.ip_addresses
+   * action_result.data.*.data.attributes.counters.urls
+   * action_result.data.*.data.attributes.counters.iocs
+   * action_result.data.*.data.attributes.counters.subscribers
+   * action_result.data.*.data.attributes.counters.attack_techniques
+   * action_result.data.*.data.attributes.available_mitigation.*
+   * action_result.data.*.data.attributes.collection_links.*
+   * action_result.data.*.data.attributes.capabilities.*
+   * action_result.data.*.data.attributes.vulnerable_products
+   * action_result.data.*.data.attributes.version_history.*.version_notes.*
+   * action_result.data.*.data.attributes.version_history.*.date
+   * action_result.data.*.data.attributes.status
+   * action_result.data.*.data.attributes.cve_id
+   * action_result.data.*.data.attributes.exploitation_consequence
+   * action_result.data.*.data.attributes.recent_activity_summary.*
+   * action_result.data.*.data.attributes.targeted_regions_hierarchy.*
+   * action_result.data.*.data.attributes.exploitation.exploit_release_date
+   * action_result.data.*.data.attributes.exploitation.tech_details_release_date
+   * action_result.data.*.data.attributes.exploitation.first_exploitation
+   * action_result.data.*.data.attributes.targeted_regions.*
+   * action_result.data.*.data.attributes.mve_id
+   * action_result.data.*.data.attributes.files_count
+   * action_result.data.*.data.attributes.risk_factors.*
+   * action_result.data.*.data.attributes.merged_actors.*
+   * action_result.data.*.data.attributes.date_of_disclosure
+   * action_result.data.*.data.attributes.field_sources.*.field
+   * action_result.data.*.data.attributes.field_sources.*.source.source_name
+   * action_result.data.*.data.attributes.field_sources.*.source.source_url
+   * action_result.data.*.data.attributes.field_sources.*.source.sources.*
+   * action_result.data.*.data.attributes.field_sources.*.source.field_type
+   * action_result.data.*.data.attributes.motivations.*
+   * action_result.data.*.data.attributes.epss.percentile
+   * action_result.data.*.data.attributes.epss.score
+   * action_result.data.*.data.attributes.sources.*.published_date
+   * action_result.data.*.data.attributes.sources.*.unique_id
+   * action_result.data.*.data.attributes.sources.*.source_description
+   * action_result.data.*.data.attributes.sources.*.md5
+   * action_result.data.*.data.attributes.sources.*.url
+   * action_result.data.*.data.attributes.sources.*.name
+   * action_result.data.*.data.attributes.sources.*.cvss.cvssv2_0
+   * action_result.data.*.data.attributes.sources.*.cvss.cvssv3_x_translated
+   * action_result.data.*.data.attributes.sources.*.cvss.cvssv4_x
+   * action_result.data.*.data.attributes.sources.*.cvss.cvssv3_x.base_score
+   * action_result.data.*.data.attributes.sources.*.cvss.cvssv3_x.vector
+   * action_result.data.*.data.attributes.sources.*.cvss.cvssv3_x.temporal_score
+   * action_result.data.*.data.attributes.sources.*.title
+   * action_result.data.*.data.attributes.mitigations.*
+   * action_result.data.*.data.attributes.vendor_fix_references.*.published_date
+   * action_result.data.*.data.attributes.vendor_fix_references.*.unique_id
+   * action_result.data.*.data.attributes.vendor_fix_references.*.source_description
+   * action_result.data.*.data.attributes.vendor_fix_references.*.md5
+   * action_result.data.*.data.attributes.vendor_fix_references.*.url
+   * action_result.data.*.data.attributes.vendor_fix_references.*.name
+   * action_result.data.*.data.attributes.vendor_fix_references.*.cvss
+   * action_result.data.*.data.attributes.vendor_fix_references.*.title
+   * action_result.data.*.data.attributes.intended_effects.*
+   * action_result.data.*.data.attributes.alt_names_details.*
+   * action_result.data.*.data.attributes.executive_summary
+   * action_result.data.*.data.attributes.origin
+   * action_result.data.*.data.attributes.threat_scape.*
+   * action_result.data.*.data.attributes.detection_names.*
+   * action_result.data.*.data.attributes.urls_count
+   * action_result.data.*.data.attributes.days_to_report
+   * action_result.data.*.data.attributes.ip_addresses_count
+   * action_result.data.*.data.attributes.domains_count
+   * action_result.data.*.data.attributes.source_regions_hierarchy.*
+   * action_result.data.*.data.attributes.last_seen_details.*
+   * action_result.data.*.data.attributes.operating_systems.*
+   * action_result.data.*.data.attributes.top_icon_md5.*
+   * action_result.data.*.data.attributes.first_seen_details.*
+   * action_result.data.*.data.attributes.workarounds.*
+   * action_result.data.*.data.attributes.last_modification_date
+   * action_result.data.*.data.attributes.priority
+   * action_result.data.*.data.attributes.tags_details.*
+   * action_result.data.*.data.attributes.name
+   * action_result.data.*.data.attributes.targeted_informations.*
+   * action_result.data.*.data.attributes.tags.*
+   * action_result.data.*.data.attributes.cpes.*.end_rel
+   * action_result.data.*.data.attributes.cpes.*.start_rel
+   * action_result.data.*.data.attributes.cpes.*.start_cpe.version
+   * action_result.data.*.data.attributes.cpes.*.start_cpe.vendor
+   * action_result.data.*.data.attributes.cpes.*.start_cpe.uri
+   * action_result.data.*.data.attributes.cpes.*.start_cpe.product
+   * action_result.data.*.data.attributes.cpes.*.end_cpe
+   * action_result.data.*.data.attributes.private
+   * action_result.data.*.data.attributes.risk_rating
+   * action_result.data.*.data.attributes.targeted_industries_tree.*
+   * action_result.data.*.data.attributes.predicted_risk_rating
+   * action_result.data.*.data.attributes.references_count
+   * action_result.data.*.data.attributes.technologies.*
+   * action_result.data.*.data.attributes.collection_type
+   * action_result.data.*.data.attributes.cvss.cvssv2_0.base_score
+   * action_result.data.*.data.attributes.cvss.cvssv2_0.vector
+   * action_result.data.*.data.attributes.cvss.cvssv2_0.temporal_score
+   * action_result.data.*.data.attributes.cvss.cvssv3_x.base_score
+   * action_result.data.*.data.attributes.cvss.cvssv3_x.vector
+   * action_result.data.*.data.attributes.cvss.cvssv3_x.temporal_score
+   * action_result.data.*.data.attributes.mati_genids_dict.cve_id
+   * action_result.data.*.data.attributes.mati_genids_dict.mve_id
+   * action_result.data.*.data.attributes.mati_genids_dict.report_id
+   * action_result.data.*.data.attributes.targeted_industries.*
+   * action_result.data.*.data.attributes.subscribers_count
+   * action_result.data.*.data.context_attributes.shared_with_me
+   * action_result.data.*.data.context_attributes.role
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+________________
+
+
+   11. Get File Sandbox Report
+   1.  Action Goal
+The goal of this action is to fetch the All behavior report for a file.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	File Hash
+	String
+	Yes
+	N/A
+	Vault id of file or a file hash
+	Password
+	String
+	No
+	N/A
+	Password to decompress and scan a file contained in a protected ZIP file.
+	
+
+   3. Action Workflow
+  
+
+   4. Functional use cases
+Endpoint
+
+
+GET: https://www.virustotal.com/api/v3/files/upload_url
+
+
+The url_id will be received from the above GET call
+POST: https://bigfiles.virustotal.com/_ah/upload/{{url_id}}/
+Parameters:
+Body: form-data:
+file= {{file}}
+
+
+GET: https://www.virustotal.com/api/v3/analyses/{{file_id}}
+
+
+GET: https://www.virustotal.com/api/v3/files/{{file_id}}/behaviours
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.vault_id
+   * action_result.data
+   * action_result.data.*.data.*.id
+   * action_result.data.*.data.*.type
+   * action_result.data.*.data.*.links.self
+   * action_result.data.*.data.*.attributes.tls.*.ja3
+   * action_result.data.*.data.*.attributes.tls.*.sni
+   * action_result.data.*.data.*.attributes.tls.*.version
+   * action_result.data.*.data.*.attributes.tls.*.thumbprint
+   * action_result.data.*.data.*.attributes.tls.*.serial_number
+   * action_result.data.*.data.*.attributes.tls.*.subject.CN
+   * action_result.data.*.data.*.attributes.tls.*.subject.O
+   * action_result.data.*.data.*.attributes.tls.*.ja3s
+   * action_result.data.*.data.*.attributes.tls.*.issuer.C
+   * action_result.data.*.data.*.attributes.tls.*.issuer.CN
+   * action_result.data.*.data.*.attributes.tls.*.issuer.L
+   * action_result.data.*.data.*.attributes.tls.*.issuer.O
+   * action_result.data.*.data.*.attributes.tls.*.issuer.ST
+   * action_result.data.*.data.*.attributes.tls.*.issuer.OU
+   * action_result.data.*.data.*.attributes.has_html_report
+   * action_result.data.*.data.*.attributes.modules_loaded.*
+   * action_result.data.*.data.*.attributes.services_opened.*
+   * action_result.data.*.data.*.attributes.windows_hidden.*
+   * action_result.data.*.data.*.attributes.memory_pattern_ips.*
+   * action_result.data.*.data.*.attributes.last_modification_date
+   * action_result.data.*.data.*.attributes.processes_terminated.*
+   * action_result.data.*.data.*.attributes.tags.*
+   * action_result.data.*.data.*.attributes.ip_traffic.*.transport_layer_protocol
+   * action_result.data.*.data.*.attributes.ip_traffic.*.destination_ip
+   * action_result.data.*.data.*.attributes.ip_traffic.*.destination_port
+   * action_result.data.*.data.*.attributes.sandbox_name
+   * action_result.data.*.data.*.attributes.files_deleted.*
+   * action_result.data.*.data.*.attributes.files_written.*
+   * action_result.data.*.data.*.attributes.mitre_attack_techniques.*.signature_description
+   * action_result.data.*.data.*.attributes.mitre_attack_techniques.*.id
+   * action_result.data.*.data.*.attributes.mitre_attack_techniques.*.severity
+   * action_result.data.*.data.*.attributes.analysis_date
+   * action_result.data.*.data.*.attributes.dns_lookups.*.resolved_ips.*
+   * action_result.data.*.data.*.attributes.dns_lookups.*.hostname
+   * action_result.data.*.data.*.attributes.behash
+   * action_result.data.*.data.*.attributes.processes_tree.*.process_id
+   * action_result.data.*.data.*.attributes.processes_tree.*.name
+   * action_result.data.*.data.*.attributes.processes_tree.*.children.*.process_id
+   * action_result.data.*.data.*.attributes.processes_tree.*.children.*.time_offset
+   * action_result.data.*.data.*.attributes.processes_tree.*.children.*.name
+   * action_result.data.*.data.*.attributes.processes_tree.*.children.*.children.*.process_id
+   * action_result.data.*.data.*.attributes.processes_tree.*.children.*.children.*.time_offset
+   * action_result.data.*.data.*.attributes.processes_tree.*.children.*.children.*.name
+   * action_result.data.*.data.*.attributes.has_evtx
+   * action_result.data.*.data.*.attributes.memory_pattern_domains.*
+   * action_result.data.*.data.*.attributes.mutexes_created.*
+   * action_result.data.*.data.*.attributes.files_opened.*
+   * action_result.data.*.data.*.attributes.command_executions.*
+   * action_result.data.*.data.*.attributes.memory_pattern_urls.*
+   * action_result.data.*.data.*.attributes.processes_created.*
+   * action_result.data.*.data.*.attributes.has_memdump
+   * action_result.data.*.data.*.attributes.files_dropped.*.path
+   * action_result.data.*.data.*.attributes.files_dropped.*.sha256
+   * action_result.data.*.data.*.attributes.ja3_digests.*
+   * action_result.data.*.data.*.attributes.verdicts.*
+   * action_result.data.*.data.*.attributes.mutexes_opened.*
+   * action_result.data.*.data.*.attributes.registry_keys_opened.*
+   * action_result.data.*.data.*.attributes.registry_keys_set.*.key
+   * action_result.data.*.data.*.attributes.registry_keys_set.*.value
+   * action_result.data.*.data.*.attributes.has_pcap
+   * action_result.data.*.meta.count
+   * action_result.data.*.links.self
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+________________
+
+
+   12. Get DNS Passive Data
+   1. Action Goal
+The goal of this action is to retrieve passive DNS records related to a specific IP address or domain.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Entity
+	String
+	Yes
+	N/A
+	Entity (IP, Domain) to get report
+	
+
+   3. Action Workflow
+  
+
+   4. Functional use cases
+Endpoint
+
+
+For Domain:
+GET: https://www.virustotal.com/api/v3/domains/{{domain}}/resolutions 
+
+
+For IP:
+
+
+GET: https://www.virustotal.com/api/v3/ip_addresses/{{ip}}/resolutions 
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.entity
+   * action_result.data
+   * action_result.data.*.data.*.id
+   * action_result.data.*.data.*.type
+   * action_result.data.*.data.*.links.self
+   * action_result.data.*.data.*.attributes.ip_address
+   * action_result.data.*.data.*.attributes.date
+   * action_result.data.*.data.*.attributes.host_name
+   * action_result.data.*.data.*.attributes.host_name_last_analysis_stats.malicious
+   * action_result.data.*.data.*.attributes.host_name_last_analysis_stats.suspicious
+   * action_result.data.*.data.*.attributes.host_name_last_analysis_stats.undetected
+   * action_result.data.*.data.*.attributes.host_name_last_analysis_stats.harmless
+   * action_result.data.*.data.*.attributes.host_name_last_analysis_stats.timeout
+   * action_result.data.*.data.*.attributes.resolver
+   * action_result.data.*.data.*.attributes.ip_address_last_analysis_stats.malicious
+   * action_result.data.*.data.*.attributes.ip_address_last_analysis_stats.suspicious
+   * action_result.data.*.data.*.attributes.ip_address_last_analysis_stats.undetected
+   * action_result.data.*.data.*.attributes.ip_address_last_analysis_stats.harmless
+   * action_result.data.*.data.*.attributes.ip_address_last_analysis_stats.timeout
+   * action_result.data.*.meta.count
+   * action_result.data.*.meta.cursor
+   * action_result.data.*.links.self
+   * action_result.data.*.links.next
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+________________
+
+
+   13. Get ATD Alert
+   1. Action Goal
+The goal of this action is to get details for an alert by name.
+   2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Alert ID
+	String
+	Yes
+	N/A
+	Alert ID segment making up alert name.
+	
+
+   3. Action Workflow
+  
+  
+________________
+   4. Functional use cases
+Endpoint
+
+
+GET: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}
+
+
+   5. Action Output
+   * action_result.status
+   * action_result.parameter.alert_id
+   * action_result.data
+   * action_result.data.*.name
+   * action_result.data.*.findings
+   * action_result.data.*.state
+   * action_result.data.*.audit.updateTime
+   * action_result.data.*.audit.createTime
+   * action_result.data.*.audit.creator
+   * action_result.data.*.audit.updater
+   * action_result.data.*.displayName
+   * action_result.data.*.detail.detailType
+   * action_result.data.*.detail.dataLeak.severity
+   * action_result.data.*.detail.dataLeak.discoveryDocumentIds
+   * action_result.data.*.etag
+   * action_result.data.*.aiSummary
+   * action_result.data.*.relevanceAnalysis.relevant
+   * action_result.data.*.relevanceAnalysis.confidence
+   * action_result.data.*.relevanceAnalysis.reasoning
+   * action_result.data.*.relevanceAnalysis.evidence.commonThemes
+   * action_result.data.*.relevanceAnalysis.evidence.distinctThemes
+   * action_result.data.*.relevanceAnalysis.relevanceLevel
+   * action_result.data.*.severityAnalysis.severityLevel
+   * action_result.data.*.severityAnalysis.confidence
+   * action_result.data.*.severityAnalysis.reasoning
+   * action_result.data.*.priorityAnalysis.priorityLevel
+   * action_result.data.*.priorityAnalysis.reasoning
+   * action_result.data.*.findingCount 
+   * action_result.message
+   * action_result.summary
+   * summary.total_objects
+   * summary.total_objects_successful
+________________
+      14. Update ATD Alert Status
+      1. Action Goal
+The goal of this action is to update the status of an alert to any one of the following states:
+      * Benign
+      * Duplicate
+      * Escalated
+      * False Positive
+      * Not Actionable
+      * Read
+      * Resolved
+      * Triaged
+      * Externally Tracked
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Alert ID
+	String
+	Yes
+	N/A
+	Alert ID segment making up alert name.
+	Status
+	Dropdown
+	Yes
+	N/A
+	Update the status of an alert to any one of the following states:
+      * Benign
+      * Duplicate
+      * Escalated
+      * False Positive
+      * Not Actionable
+      * Read
+      * Resolved
+      * Triaged
+      * Externally Tracked
+	
+
+      3. Action Workflow
+  
+ 
+________________
+      4. Functional use cases
+Endpoint
+      * Benign
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:benign 
+      * Duplicate
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:duplicate 
+      * Escalated
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:escalate 
+      * False Positive
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:falsePositive 
+      * Not Actionable
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:notActionable 
+      * Read
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:read 
+      * Resolved
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:resolve 
+      * Triaged
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:triage 
+      * Externally Tracked
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:trackExternally 
+
+
+      5. Action Output
+      * action_result.status
+      * action_result.parameter.alert_id
+      * action_result.data
+      * action_result.data.*
+      * action_result.data.*.name
+      * action_result.data.*.findings
+      * action_result.data.*.state
+      * action_result.data.*.audit.updateTime
+      * action_result.data.*.audit.createTime
+      * action_result.data.*.audit.creator
+      * action_result.data.*.audit.updater
+      * action_result.data.*.displayName
+      * action_result.data.*.detail.detailType
+      * action_result.data.*.detail.dataLeak.severity
+      * action_result.data.*.detail.dataLeak.discoveryDocumentIds
+      * action_result.data.*.etag
+      * action_result.data.*.aiSummary
+      * action_result.data.*.relevanceAnalysis.relevant
+      * action_result.data.*.relevanceAnalysis.confidence
+      * action_result.data.*.relevanceAnalysis.reasoning
+      * action_result.data.*.relevanceAnalysis.evidence.commonThemes
+      * action_result.data.*.relevanceAnalysis.evidence.distinctThemes
+      * action_result.data.*.relevanceAnalysis.relevanceLevel
+      * action_result.data.*.severityAnalysis.severityLevel
+      * action_result.data.*.severityAnalysis.confidence
+      * action_result.data.*.severityAnalysis.reasoning
+      * action_result.data.*.priorityAnalysis.priorityLevel
+      * action_result.data.*.priorityAnalysis.reasoning
+      * action_result.data.*.findingCount
+      * action_result.message
+      * action_result.summary
+      * summary.total_objects
+      * summary.total_objects_successful
+      15. Ingest ASM Issues (On Poll)
+      1. Action Goal
+Ingest ASM issues for the current organization into Splunk SOAR as containers. Artifacts will be created within each container using details received from GTI.
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Search String
+	String
+	No
+	
+
+	Search string to filter ASM Issues
+	Limit
+	Number
+	No
+	1000
+	Number of objects to retrieve per poll (max: 1000)
+	Lookback Days
+	Number
+	No
+	5
+	Number of days of historical data to retrieve (max: 5)
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      3. Action Workflow
+  
+
+
+
+
+
+
+
+What does on poll do?
+It will ingest data from the external system into the phantom server in the form of containers and artifacts. There are two approaches to polling which are mentioned below. 
+
+
+1. Poll Now (Manual polling)
+It will fetch the data every time as per the corresponding asset configuration parameters. It doesn’t store the last run context of the fetched data.
+
+
+2. Scheduled/Interval Polling
+The ingestion action can be triggered at a regular time interval. It will fetch the data every time as per the corresponding asset configuration parameters based on the stored context from the previous ingestion run. It stores the last run context of the fetched data. It starts fetching data based on the combination of the values of stored context for the previous ingestion run and the corresponding asset configuration parameters.
+
+
+Stored context
+It is the concept of storing the context of the previous ingestion run. This concept will be used only for scheduled/interval polling. It will use the state file to store the last run context. This state file will be created for the created asset for the application on the phantom platform.
+      4. Functional Use Case
+Endpoint
+
+
+GET: https://www.virustotal.com/api/v3/asm/search/issues/
+
+
+      5. Action Output
+Events will be ingested in the form of container/artifacts in SOAR.
+________________
+
+
+      16. Ingest DTM Alerts (On Poll)
+      1. Action Goal
+Ingest DTM alerts for the current organization into Splunk SOAR as containers. Artifacts will be created within each container using details received from GTI.
+
+
+
+
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Monitor ID
+	String
+	No
+	NA
+	Filter alerts by the specified monitor ID(s)
+	Status
+	String
+	No
+	NA
+	Filter alerts by their status. This parameter can be specified multiple times
+	Alert Type
+	String
+	No
+	NA
+	Filter alerts by alert type. This parameter can be specified multiple times
+	Search
+	String
+	No
+	NA
+	Search alert and triggering doc contents based on a simple Lucene query string including 1 or more text values separated by AND or OR
+	Match Value
+	String
+	No
+	NA
+	If specified, then only alerts that have the given match value are returned. This parameter can be repeated multiple time
+	Tags
+	String
+	No
+	NA
+	Filter alerts by tag(s). This parameter can be used more than once to filter on multiple tags
+	Severity 
+	String
+	No
+	NA
+	Return alerts that have the given severity. This parameter can be repeated multiple times
+	Mscore GTE
+	Number
+	No
+	NA
+	Filter alerts with mscores greater than or equal to the given value
+	Limit
+	Number
+	No
+	1000
+	Number of objects to retrieve per poll (max: 1000)
+	Lookback Days
+	Number
+	No
+	5
+	Number of days of historical data to retrieve (max: 5)
+	
+
+
+
+      3. Action Workflow
+  
+
+      4. Functional Use Case
+Endpoint
+
+
+GET: https://www.virustotal.com/api/v3/dtm/alerts 
+      5. Action Output
+Events will be ingested in the form of container/artifacts in SOAR.
+      17. Ingest IOC Stream (On Poll)
+      1. Action Goal
+Ingest IOC stream data into Splunk SOAR. A container will be created each day for the IOC stream data. Events received on that day will be ingested into the same container in the form of artifacts.
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Filter
+	String
+	Yes
+	N/A
+	Filter string
+	Descriptors Only
+	Boolean
+	No
+	False
+	The response returns only objects descriptors instead of whole VT objects
+	Limit
+	Number
+	No
+	1000
+	Number of objects to retrieve per poll (max: 1000)
+	Lookback Days
+	Number
+	No
+	5
+	Number of days of historical data to retrieve (max: 5)
+	
+
+      3. Action Workflow
+  
+
+      4. Functional Use Case
+Endpoint
+
+
+GET: https://www.virustotal.com/api/v3/ioc_stream 
+      5. Action Output
+Events will be ingested in the form of container/artifacts in SOAR.
+________________
+      18. Ingest ATD Alerts (On Poll)
+      1. Action Goal
+Ingest ATD alerts for the Project ID set in the configuration parameters into Splunk SOAR as containers. Artifacts will be created within each container using details received from GTI.
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Project ID
+	String
+	No
+	N/A
+	Required for Ingest ATD Alerts (On poll)
+	Filter
+	String
+	No
+	NA
+	String of filter
+audit.update_time filter is NOT acceptable for this api as it is used as a checkpoint for the next run.
+Example filter:
+      * detail.insider_threat.severity = "HIGH"
+      * state = "NEW" OR state = "TRIAGED"
+      * severity_analysis.severity_level = "SEVERITY_LEVEL_CRITICAL"
+	Limit
+	Number
+	No
+	1000
+	Number of alerts to retrieve per poll (max: 1000)
+	Lookback days
+	Number
+	No
+	5
+	Number of days of historical data to retrieve (max: 5)
+	
+
+      3. Action Workflow
+  
+ 
+      4. Functional Use Case
+Endpoint
+
+
+GET https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts 
+________________
+      5. Checkpoint and Deduplication Mechanism
+Alerts are retrieved using a time-bounded filter for update_time, where the lower bound is the update_time persisted in the state file from the previous execution, and the upper bound is the current time. After processing all fetched alerts, the state file is updated with the current time. In subsequent polling cycles, this stored timestamp serves as the new lower bound for alert retrieval.
+
+
+For ingestion, each alert corresponds to a single container within Splunk SOAR. An artifact is created under the container with the alert details. If an updated alert is retrieved for future polling cycles, an additional artifact is appended to the same container rather than overwriting the existing one.
+
+
+Artifact-level deduplication is inherently managed by Splunk SOAR at the container level through a hashing mechanism. Each artifact’s content is hashed, and any change in the underlying data results in a new hash.
+
+
+At the container level, deduplication is ensured by assigning the source_data_identifier to a unique alert identifier.
+
+
+
+
+      6. Action Output
+Events will be ingested in the form of container/artifacts in SOAR.
+________________
+Playbook Development
+________________
+Close ASM Issue
+Develop a playbook to automatically close ASM issues on GTI when the corresponding container is closed in Splunk SOAR.
+NOTE: It’s not possible to trigger the playbook on any container status change except Closed. If the user changes the status to anything other than Closed, the playbook will not trigger, and the status on the GTI will remain unchanged.
+Close DTM Alert
+Develop a playbook to automatically close ASM issues on GTI when the corresponding container is closed in Splunk SOAR.
+NOTE: It’s not possible to trigger the playbook on any container status change except Closed. If the user changes the status to anything other than Closed, the playbook will not trigger, and the status on the GTI will remain unchanged.
+Vulnerability Enrichment and Ticket Creation
+Develop a playbook to enrich CVE artifacts using Google Threat Intelligence vulnerability context, assess the associated risk, and automatically create a ServiceNow ticket when the vulnerability meets defined severity or risk thresholds.
+IOC Enrichment Orchestrator
+Develop an automation playbook to extract IOC values from incoming artifacts and orchestrate enrichment by invoking the input playbook IOC Enrichment and Blocking, enabling centralized handling of multiple IOC types through a single orchestration layer.
+IOC Enrichment and Blocking
+Develop an input playbook to enrich a single IOC using Google Threat Intelligence, evaluate maliciousness based on verdict and threat score, and apply response actions such as blocking or documentation according to the enrichment outcome.
+
+
+________________
+
+
+Phishing Triage and Response
+Develop an automation playbook to extract email addresses and domains from phishing-related artifacts and orchestrate domain enrichment by invoking the input playbook Phishing Domain Enrichment, enabling consistent triage and response workflows.
+Phishing Domain Enrichment
+Develop an input playbook to enrich phishing-related domains using Google Threat Intelligence and apply response actions, such as escalation or blocking, when the domain is determined to be malicious.
+DTM Alert Incident Response
+Develop a playbook to evaluate the severity of Google Threat Intelligence DTM alerts and automatically escalate high-severity alerts by creating a corresponding ServiceNow incident for further investigation and response.
+ASM Alert Incident Response
+Develop a playbook to evaluate the severity of Google Threat Intelligence ASM alerts and automatically escalate high-severity alerts by creating a corresponding ServiceNow incident to ensure timely remediation.
+IOCs Curated Threat Intelligence Enrichment
+Develop a playbook to enrich IOCs using Google Threat Intelligence curated associations, providing analyst-verified threat context, relationships, and attribution data to support informed investigation and decision-making.
+Scan Private File
+Develop a playbook to perform a private file scan using Google Threat Intelligence, evaluate the scan results, and apply enforcement and documentation actions based on the maliciousness assessment.
+Scan Private URL
+Develop a playbook to perform a private URL scan using Google Threat Intelligence, evaluate the scan results, and apply enforcement and documentation actions based on the maliciousness assessment.
+Close ATD Alert
+Develop a playbook to automatically update status of ATD alerts on GTI to Resolved when the corresponding container is closed in Splunk SOAR.
+NOTE: It’s not possible to trigger the playbook on any container status change except Closed. If the user changes the status to anything other than Closed, the playbook will not trigger, and the status on the GTI will remain unchanged.
+
+
+
+
+
+
+________________
+Logging
+________________
+All relevant logs generated during the execution of this integration will be written to the spawn.log file.
+        File location: {SPLUNK_SOAR_HOME}/var/log/phantom/spawn.log
+log_level: INFO (Can change to any one of TRACE, DEBUG, INFO, WARNING, ERROR)
+
+
+Limitations
+________________
+
+
+NA
+
+
+
+
+Known Issues
+________________
+NA
+
+
+
+
+
+
+
+
+
+
+ATD Alerts Specific
+
+
+
+
+  
+
+
+
+        
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+________________
+Contents
+________________
+Contents        2
+Overview        3
+Google Threat Intelligence Platform        3
+Splunk SOAR Platform        3
+Compatibility Matrix        3
+Splunk SOAR App Architecture        4
+Data Flow Diagram        5
+Integration Use Cases        6
+Configure Asset        6
+1. Test Connectivity        7
+1.1. Action Goal        7
+1.2. Action Parameters        7
+1.3. Action Workflow        7
+1.4. Functional use cases        7
+1.5. Action Output        8
+2. Get ATD Alert        9
+2.1. Action Goal        9
+2.2. Action Parameters        9
+2.3. Action Workflow        10
+2.4. Functional use cases        11
+2.5. Action Output        11
+3. Update ATD Alert Status        12
+3.1. Action Goal        12
+3.2. Action Parameters        12
+3.3. Action Workflow        13
+3.4. Functional use cases        14
+3.5. Action Output        15
+4. Ingest ATD Alerts (On Poll)        17
+4.1. Action Goal        17
+4.2. Action Parameters        17
+4.3. Action Workflow        18
+4.4. Functional Use Case        18
+4.5. Checkpoint and Deduplication Mechanism        19
+4.6. Action Output        19
+Playbook Development        20
+Close ATD Alert        20
+Overview
+________________
+Google Threat Intelligence Platform
+Google Threat Intelligence provides a comprehensive and proactive approach to identifying, analyzing, and mitigating security threats. Leveraging Google’s vast infrastructure, global telemetry, and advanced analytics, it delivers actionable insights to enhance an organization’s security posture. Google Threat Intelligence offers capabilities such as threat detection, analysis of malware and phishing campaigns, real-time threat alerts, and intelligence feeds that integrate seamlessly with security tools like SIEM (Security Information and Event Management) and SOAR (Security Orchestration, Automation, and Response) platforms.
+Splunk SOAR Platform
+Splunk SOAR is a Security Orchestration, Automation, and Response (SOAR) Platform. It combines security infrastructure orchestration, playbook automation, and case management capabilities to integrate the team, processes, and tools. The majority of the companies use SOAR tools for the below-mentioned objectives.
+      * To automate repetitive tasks to increase practical team efforts and provide attention to mission-critical decisions. 
+      * To perform automated investigations and reduce the turnaround time to such critical decision-making situations using extensive playbooks designed on the Splunk SOAR Platform.
+      * To integrate the existing security infrastructure to ensure the active participation of each part in the security defense workflow. 
+
+
+
+
+
+
+Compatibility Matrix
+________________
+
+
+      * Google Threat Intelligence API Version - v3, v1beta
+      * Minimum Splunk SOAR Platform Version -7.1.0.225
+      * OS Platforms - Linux (for Splunk SOAR Platform deployment)
+      * Python version - Py3 Compatible
+
+
+Splunk SOAR App Architecture
+________________
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Data Flow Diagram
+________________
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Integration Use Cases
+________________
+
+
+This section describes the use cases provided as a part of this integration.
+Configure Asset
+Steps to Configure the Google Threat Intelligence Splunk SOAR’s asset
+Follow these steps to create an asset for the Splunk SOAR Platform:
+      1. Log in to the Google Threat Intelligence Platform.
+      * From the Left Navbar/Menu click API Key.
+      * Access your API key.
+      * To obtain the project id, in the URL when accessing GTI Alerts 
+      * for example, in https://proactive.virustotal.com/alerts?...&project=projects%2F**your-project-id**
+the Project ID is your-project-id
+
+
+      2. Log in to your Splunk SOAR Platform.
+      * Navigate to the Home dropdown and select Apps.
+      * Search Google Threat Intelligence from the search box.
+      * Click on the CONFIGURE NEW ASSET button.
+      * Navigate to the Asset Info tab and enter the Asset name and Asset description.
+      * Navigate to the Asset Settings and paste the API key of your Google Threat Intelligence Platform.
+      * Add the Project ID of your GTI instance in the Project ID parameter.
+      * Save the asset.
+      * Now, test the connectivity of the Splunk SOAR server to the Google Threat Intelligence by clicking the TEST CONNECTIVITY button. 
+
+
+
+
+
+
+
+
+
+
+      1. Test Connectivity
+      1. Action Goal
+Initiate a connection to the Google Threat Intelligence system to validate the asset configuration
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	API Key
+	String
+	Yes
+	N/A
+	Google Threat Intelligence API Key
+	      3. Action Workflow
+This action will make a rest call to Google Threat Intelligence to check, if the connection is made successful or not. It uses OAUTH 2.0 authentication for Ingest ATD Alerts On Poll, Get ATD Alerts and Update ATD Alert Status Actions.
+      4. Functional use cases
+The functional use case of the connectivity action is to validate the provided asset configuration parameters.
+
+
+Endpoint:
+ 
+GET https://www.virustotal.com/api/v3/me
+
+
+Authentication for Ingest ATD Alerts On Poll, Get ATD Alerts and Update ATD Alert Status Actions
+
+
+POST https://idp.prod.identity.proactive.virustotal.com/realms/master/exchange/api-key 
+
+
+Body parameters:
+api_key : API Key of the GTI platform
+
+
+NOTE: The API call fails with 403 for requests module’s User-Agent. Passing the below headers works when using requests module:
+{
+"Content-Type": "application/json",
+“User-Agent": "SplunkSoar",
+                }
+
+
+      5. Action Output
+The action displays the success or failure message based on the API response. For a successful run, it displays ‘Test Connectivity to Google Threat Intelligence Passed’ output message and in case of failure scenarios, it displays the message ‘Test Connectivity to Google Threat Intelligence Failed’ with an appropriate output error response.
+For the Authentication for Ingest ATD Alerts On Poll, Get ATD Alerts and Update ATD Alert Status Actions, the access token is stored in the state file.
+________________
+      2. Get ATD Alert
+      1. Action Goal
+The goal of this action is to get details for an alert by name.
+      2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Alert ID
+	String
+	Yes
+	N/A
+	Alert ID segment making up alert name.
+	
+
+      3. Action Workflow
+  
+  
+________________
+      4. Functional use cases
+Endpoint
+
+
+GET: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}
+
+
+
+
+      5. Action Output
+      * action_result.status
+      * action_result.parameter.alert_id
+      * action_result.data
+      * action_result.data.*.name
+      * action_result.data.*.findings
+      * action_result.data.*.state
+      * action_result.data.*.audit.updateTime
+      * action_result.data.*.audit.createTime
+      * action_result.data.*.audit.creator
+      * action_result.data.*.audit.updater
+      * action_result.data.*.displayName
+      * action_result.data.*.detail.detailType
+      * action_result.data.*.detail.dataLeak.severity
+      * action_result.data.*.detail.dataLeak.discoveryDocumentIds
+      * action_result.data.*.etag
+      * action_result.data.*.aiSummary
+      * action_result.data.*.relevanceAnalysis.relevant
+      * action_result.data.*.relevanceAnalysis.confidence
+      * action_result.data.*.relevanceAnalysis.reasoning
+      * action_result.data.*.relevanceAnalysis.evidence.commonThemes
+      * action_result.data.*.relevanceAnalysis.evidence.distinctThemes
+      * action_result.data.*.relevanceAnalysis.relevanceLevel
+      * action_result.data.*.severityAnalysis.severityLevel
+      * action_result.data.*.severityAnalysis.confidence
+      * action_result.data.*.severityAnalysis.reasoning
+      * action_result.data.*.priorityAnalysis.priorityLevel
+      * action_result.data.*.priorityAnalysis.reasoning
+      * action_result.data.*.findingCount 
+      * action_result.message
+      * action_result.summary
+      * summary.total_objects
+      * summary.total_objects_successful
+________________
+         3. Update ATD Alert Status
+         1. Action Goal
+The goal of this action is to update the status of an alert to any one of the following states:
+         * Benign
+         * Duplicate
+         * Escalated
+         * False Positive
+         * Not Actionable
+         * Read
+         * Resolved
+         * Triaged
+         * Externally Tracked
+         2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Alert ID
+	String
+	Yes
+	N/A
+	Alert ID segment making up alert name.
+	Status
+	Dropdown
+	Yes
+	N/A
+	Update the status of an alert to any one of the following states:
+         * Benign
+         * Duplicate
+         * Escalated
+         * False Positive
+         * Not Actionable
+         * Read
+         * Resolved
+         * Triaged
+         * Externally Tracked
+	
+
+         3. Action Workflow
+  
+ 
+________________
+         4. Functional use cases
+Endpoint
+         * Benign
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:benign 
+         * Duplicate
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:duplicate 
+         * Escalated
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:escalate 
+         * False Positive
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:falsePositive 
+         * Not Actionable
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:notActionable 
+         * Read
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:read 
+         * Resolved
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:resolve 
+
+
+
+
+
+
+         * Triaged
+
+
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:triage 
+         * Externally Tracked
+POST: https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts/{alert}:trackExternally 
+
+
+         5. Action Output
+         * action_result.status
+         * action_result.parameter.alert_id
+         * action_result.data
+         * action_result.data.*
+         * action_result.data.*.name
+         * action_result.data.*.findings
+         * action_result.data.*.state
+         * action_result.data.*.audit.updateTime
+         * action_result.data.*.audit.createTime
+         * action_result.data.*.audit.creator
+         * action_result.data.*.audit.updater
+         * action_result.data.*.displayName
+         * action_result.data.*.detail.detailType
+         * action_result.data.*.detail.dataLeak.severity
+         * action_result.data.*.detail.dataLeak.discoveryDocumentIds
+         * action_result.data.*.etag
+         * action_result.data.*.aiSummary
+         * action_result.data.*.relevanceAnalysis.relevant
+         * action_result.data.*.relevanceAnalysis.confidence
+         * action_result.data.*.relevanceAnalysis.reasoning
+         * action_result.data.*.relevanceAnalysis.evidence.commonThemes
+         * action_result.data.*.relevanceAnalysis.evidence.distinctThemes
+         * action_result.data.*.relevanceAnalysis.relevanceLevel
+         * action_result.data.*.severityAnalysis.severityLevel
+         * action_result.data.*.severityAnalysis.confidence
+         * action_result.data.*.severityAnalysis.reasoning
+         * action_result.data.*.priorityAnalysis.priorityLevel
+         * action_result.data.*.priorityAnalysis.reasoning
+         * action_result.data.*.findingCount
+         * action_result.message
+         * action_result.summary
+         * summary.total_objects
+         * summary.total_objects_successful
+________________
+            4. Ingest ATD Alerts (On Poll)
+            1. Action Goal
+Ingest ATD alerts for the Project ID set in the configuration parameters into Splunk SOAR as containers. Artifacts will be created within each container using details received from GTI.
+            2. Action Parameters
+Argument Name
+	Type
+	Required
+(Yes / No)
+	Default Value
+	Description
+	Project ID
+	String
+	No
+	N/A
+	Required for Ingest ATD Alerts (On poll)
+	Filter
+	String
+	No
+	NA
+	String of filter
+audit.update_time filter is NOT acceptable for this api as it is used as a checkpoint for the next run.
+Example filter:
+            * detail.insider_threat.severity = "HIGH"
+            * state = "NEW" OR state = "TRIAGED"
+            * severity_analysis.severity_level = "SEVERITY_LEVEL_CRITICAL"
+	Limit
+	Number
+	No
+	1000
+	Number of alerts to retrieve per poll (max: 1000)
+	Lookback days
+	Number
+	No
+	5
+	Number of days of historical data to retrieve (max: 5)
+	
+
+
+
+            3. Action Workflow
+  
+ 
+            4. Functional Use Case
+Endpoint
+
+
+GET https://threatintelligence.googleapis.com/v1beta/projects/{project}/alerts 
+________________
+            5. Checkpoint and Deduplication Mechanism
+Alerts are retrieved using a time-bounded filter for update_time, where the lower bound is the update_time persisted in the state file from the previous execution, and the upper bound is the current time. After processing all fetched alerts, the state file is updated with the current time. In subsequent polling cycles, this stored timestamp serves as the new lower bound for alert retrieval.
+
+
+For ingestion, each alert corresponds to a single container within Splunk SOAR. An artifact is created under the container with the alert details. If an updated alert is retrieved for future polling cycles, an additional artifact is appended to the same container rather than overwriting the existing one.
+
+
+Artifact-level deduplication is inherently managed by Splunk SOAR at the container level through a hashing mechanism. Each artifact’s content is hashed, and any change in the underlying data results in a new hash.
+
+
+At the container level, deduplication is ensured by assigning the source_data_identifier to a unique alert identifier.
+
+
+
+
+            6. Action Output
+Events will be ingested in the form of container/artifacts in SOAR.
+________________
+Playbook Development
+________________
+Close ATD Alert
+Develop a playbook to automatically update status of ATD alerts on GTI to Resolved when the corresponding container is closed in Splunk SOAR.
+NOTE: It’s not possible to trigger the playbook on any container status change except Closed. If the user changes the status to anything other than Closed, the playbook will not trigger, and the status on the GTI will remain unchanged.
