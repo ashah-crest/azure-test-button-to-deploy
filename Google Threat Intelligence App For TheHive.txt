@@ -1,0 +1,717 @@
+﻿#
+	Document Version
+	Date
+	Owner
+	Document Status
+	Comments
+	1
+	1.0.0
+	Oct 15, 2025
+	Crest Data
+	Draft
+	
+
+	
+
+________________
+Contents
+________________
+Contents        3
+Overview        4
+Google Threat Intelligence Platform        4
+TheHive Platform        4
+Compatibility Matrix        4
+Data Flow Diagram        5
+Integration Use Cases        6
+Configure Application        6
+GTI IOC Get Report (Enrichment)        10
+GTI Scan File        11
+GTI Scan Private File        12
+GTI Scan URL        13
+GTI Scan Private URL        14
+Low Level - Technical Approach        16
+Configure Application        16
+User Action to GTI Get IOC Report        20
+User Action to GTI Scan File        21
+User Action to GTI Scan Private File        22
+User Action to GTI Scan URL        23
+User Action to GTI Scan Private URL        25
+GTI API Information        27
+1. IOC Enrichment        27
+2. Scan Private URL        27
+4. Scan URL        27
+5. Get URL Report        27
+6. Scan Private Files        27
+7. Get Private File Report        28
+8. Get Private Analysis        28
+9. Upload File        28
+10. Scan File        28
+11. Get File Report        28
+12. Get Analysis        28
+Limitations        29
+Known Issues        29
+Troubleshooting        29
+________________
+Overview
+________________
+Google Threat Intelligence Platform
+Google Threat Intelligence provides a comprehensive and proactive approach to identifying, analyzing, and mitigating security threats. Leveraging Google’s vast infrastructure, global telemetry, and advanced analytics, it delivers actionable insights to enhance an organization’s security posture. Google Threat Intelligence offers capabilities such as threat detection, analysis of malware and phishing campaigns, real-time threat alerts, and intelligence feeds that integrate seamlessly with security tools like SIEM (Security Information and Event Management) and SOAR (Security Orchestration, Automation, and Response) platforms.
+TheHive Platform
+TheHive is a scalable, open-source, and freely available Security Incident Response Platform designed to empower Security Operations Centers (SOCs), Computer Security Incident Response Teams (CSIRTs), and cybersecurity practitioners by streamlining the management, collaboration, and analysis of security incidents. As a comprehensive 4-in-1 solution, it integrates incident triage, evidence handling, automated workflows, and reporting capabilities, transforming chaotic responses into organized processes that reduce manual tasks and enhance team coordination. TheHive features a user-friendly interface that supports automation, real-time collaboration, and customizable observables to facilitate efficient threat hunting and remediation. Maintained by StrangeBee, it is available both as a self-hosted option via GitHub and a cloud-based platform.
+
+
+
+
+Compatibility Matrix
+________________
+
+
+TheHive Version: 5.5.10 +
+Cortex Version : 3.2.1 +
+Compatible Browsers: Chrome, Edge, Firefox
+Data Flow Diagram
+________________
+  
+
+
+
+Integration Use Cases
+________________
+This section describes the use cases provided as a part of this integration.
+Configure Application
+Description :
+Upon deployment of the app on TheHive platform, users must configure specific parameters to ensure smooth and reliable operation. The GTI integration includes five types of GTI analyzers:
+1. GTI_GetReport
+2. GTI_ScanFile
+3. GTI_ScanURL
+4. GTI_ScanPrivateFile
+5. GTI_ScanPrivateURL
+Acceptance Criteria :
+1. The GTI analyzers must be properly configured and enabled within the Cortex instance to allow analysis jobs to run correctly.
+2. On the TheHive platform side, configure the integration by specifying the Cortex server URL and a valid Cortex API key. Verify that the connection test succeeds to ensure seamless communication between TheHive and Cortex.
+3. All GTI analyzer templates must be fully configured and available in TheHive before users run any analyzer. Since the GTI analyzers produce their full reports as HTML files, this setup is critical to enable the display of comprehensive reports within TheHive.
+4. Each analyzer type has its own distinct configuration that must be individually set up for proper functionality.
+5. The analyzer must provide a default configuration template upon installation for immediate usability.
+6. Analyzer configuration parameters should be fully visible and manageable via the native Cortex UI by organization administrators.
+7. When valid configurations are provided, the analyzer must execute reliably, process observables accurately, and return consistent, well-structured analysis results.
+8. If any configuration validation errors occur, such as invalid credentials or missing parameters, the error must be clearly shown within the observable’s report in TheHive.
+9. The analyzer must produce both concise summary reports and detailed reports, properly formatted to align with Cortex and TheHive taxonomy standards for efficient analysis and investigation workflows.
+10. The analyzer should robustly handle edge cases including missing or unexpected input and gracefully fail or recover without causing system instability or interruptions.
+Configuration page UI prototype:
+ ergtrshtrhreht 
+GTI_GetReport configuration
+  
+GTI_ScanFile configuration
+  
+GTI_ScanURL configuration
+  
+GTI_ScanPrivateURL configuration
+
+
+
+
+  
+GTI_ScanPrivateFile configuration
+
+
+
+
+  
+Saved configuration
+GTI IOC Get Report (Enrichment)
+On TheHive platform, analysts can perform the “GTI Get IOC Report” action on any IPs, domains, URLs, and hashes observable within a case to initiate enriching using Google Threat Intelligence (GTI). This action retrieves a comprehensive enrichment report providing insights into the reputation, associated threats, and other relevant metadata. Detailed information
+
+
+
+
+Acceptance Criteria : 
+1. The “GTI Get IOC Report” analyzer must be properly configured in the Cortex instance: enable the analyzer and set up the GTI_GetReport actions by providing the required gti_api_key. 
+2. On the TheHive side, the platform must be configured to connect to Cortex via the Cortex server URL and API key, and the connection must be verified. 
+3. Once integrated, the GTI_GetIOCReport analyzer should appear in TheHive’s list of available analyzers for supported observable types (IPs, domains, URLs, file hashes, etc.). 
+4. Analysts should be able to select a file observable within a case and retrieve the latest GTI threat intelligence information by running the analyzer. To do this:
+   1. Click the three-dot menu next to the observable.
+   2. Select “Run Analyzers”.
+   3. Choose “GTI_GetIOCReport_1_0”.
+   4. Click the “Run Selected Analyzer” button to execute the scan.
+5. The fetched report should be linked to the observable and displayed within TheHive’s interface. The report should include:
+   1. Summary of findings
+   2. GTI assessment
+   3. scan results
+   4. threat severity
+   5. relationships
+   6. artifacts
+   7. Additional information
+6. The fetched report should be linked to the observable and displayed within TheHive’s interface, offering contextual insights such as GTI assessment, scan results, threat severity, relationships, artifacts, and more. 
+7. To ensure readability, a “GTI Get IOC Report” analyzer template must be uploaded in TheHive to define how report content is rendered, and TheHive should use it to present the results in a clear, user-friendly format. 
+8. If any execution errors occur, they should be captured and surfaced within the report to aid troubleshooting.
+GTI Scan File
+On TheHive platform, analysts can perform the “GTI Scan File” action on any file observable within a case to initiate a scan using Google Threat Intelligence (GTI). This action retrieves a comprehensive file analysis report, providing insights into the file's reputation, associated threats, and other relevant metadata. Detailed information
+
+
+
+
+Acceptance Criteria : 
+1. The “GTI Scan File” analyzer must be properly configured in the Cortex instance: enable the analyzer and set up the GTI_ScanPrivateFile action by providing the required gti_api_key. If the file is password-protected, include the optional password parameter with the correct password.
+2. On the TheHive side, configure the platform to connect to Cortex by specifying the Cortex server URL and API key. Verify that the connection is successful to ensure seamless communication between TheHive and Cortex.
+3. Once integrated, the “GTI Scan File” analyzer should appear in TheHive’s list of available analyzers for the supported observable type: file.
+4. Analysts should be able to select a file observable within a case and retrieve the latest GTI threat intelligence information by running the analyzer. To do this:
+   1. Click the three-dot menu next to the observable.
+   2. Select “Run Analyzers”.
+   3. Choose “GTI_ScanFile_1_0”.
+   4. Click the “Run Selected Analyzer” button to execute the scan.
+5. The fetched report should be linked to the observable and displayed within TheHive’s interface. The report should include:
+   1. Summary of findings
+   2. File GTI assessment
+   3. File scan results
+   4. File threat severity
+   5. Additional information
+6. To ensure readability, a “GTI Scan File” analyzer template must be uploaded in TheHive to define how the report content is rendered. TheHive should use this template to present the results in a clear, user-friendly format.
+7. If any execution errors occur, they should be captured and surfaced within the report to aid troubleshooting.
+GTI Scan Private File
+On TheHive platform, analysts can perform the “GTI Scan Private File” action on any file observable within a case to initiate a scan using Google Threat Intelligence (GTI). This action retrieves a comprehensive file analysis report, providing insights into the file's reputation, associated threats, and other relevant metadata. Detailed information
+
+
+Acceptance Criteria :
+1. The “GTI Scan Private File” analyzer must be properly configured within the Cortex instance to function correctly. This includes enabling the analyzer and setting up the GTI_ScanPrivateFile action by providing the required gti_api_key. For password-protected files, the optional password parameter must be included with the correct password. 
+2. Additionally, other optional parameters such as command_line, disable_sandbox, enable_internet, retention_period_days, storage_region, interaction_sandbox, interaction_timeout, and locale can be configured as needed to customize the scan and analysis environment. Proper configuration ensures accurate scanning of private files and generation of comprehensive reports.
+3. On the TheHive side, configure the platform to connect to Cortex by specifying the Cortex server URL and API key. Verify that the connection is successful to ensure seamless communication between TheHive and Cortex.
+4. Once integrated, the “GTI Scan Private File” analyzer should appear in TheHive’s list of available analyzers for the supported observable type: file.
+5. Analysts should be able to select a file observable within a case and retrieve the latest GTI threat intelligence information by running the analyzer. To do this:
+   1. Click the three-dot menu next to the observable.
+   2. Select “Run Analyzers”.
+   3. Choose “GTI_ScanPrivateFile_1_0”.
+   4. Click the “Run Selected Analyzer” button to execute the scan.
+6. The fetched report should be linked to the observable and displayed within TheHive’s interface. The report should include:
+   1. Summary of findings
+   2. File GTI assessment
+   3. File scan results
+   4. File threat severity
+   5. Additional information
+7. To ensure readability, a “GTI Scan Private File” analyzer template must be uploaded in TheHive to define how the report content is rendered. TheHive should use this template to present the results in a clear, user-friendly format.
+8. If any execution errors occur, they should be captured and surfaced within the report to aid troubleshooting.
+GTI Scan URL
+On TheHive platform, analysts can perform the “GTI Scan URL” action on any URL observable within a case to initiate a scan using Google Threat Intelligence (GTI). This action retrieves a comprehensive URL analysis report, providing insights into the URL enrichment report, associated threats, and other relevant metadata. Detailed information
+
+
+
+
+Acceptance Criteria : 
+1. The “GTI Scan URL”analyzer must be properly configured in the Cortex instance: enable the analyzer and set up the GTI_ScanURL action by providing the required gti_api_key. 
+2. On the TheHive side, configure the platform to connect to Cortex by specifying the Cortex server URL and API key. Verify that the connection is successful to ensure seamless communication between TheHive and Cortex.
+3. Once integrated, the “GTI Scan URL” analyzer should appear in TheHive’s list of available analyzers for the supported observable type: url.
+4. Analysts should be able to select a url observable within a case and retrieve the latest GTI threat intelligence information by running the analyzer. To do this:
+   1. Click the three-dot menu next to the observable.
+   2. Select “Run Analyzers”.
+   3. Choose “GTI_ScanURL_1_0”.
+   4. Click the “Run Selected Analyzer” button to execute the scan.
+5. The fetched report should be linked to the observable and displayed within TheHive’s interface. The report should include:
+   1. Summary of findings
+   2. URL GTI assessment
+   3. URL scan results
+   4. URL threat severity
+   5. Additional information
+6. To ensure readability, a “GTI Scan URL” analyzer template must be uploaded in TheHive to define how the report content is rendered. TheHive should use this template to present the results in a clear, user-friendly format.
+7. If any execution errors occur, they should be captured and surfaced within the report to aid troubleshooting.
+GTI Scan Private URL
+On TheHive platform, analysts can perform the “GTI Scan Private URL” action on any file observable within a case to initiate a scan using Google Threat Intelligence (GTI). This action retrieves a comprehensive file analysis report, providing insights into the file's reputation, associated threats, and other relevant metadata. Detailed information
+
+
+Acceptance Criteria :
+1. The “GTI Scan Private URL” analyzer must be properly configured within the Cortex instance to function correctly. This includes enabling the analyzer and setting up the GTI_ScanPrivateURL action by providing the required gti_api_key.
+2. Additionally, other optional parameters such as user_agent, sandboxes, retention_period_days, storage_region, interaction_sandbox, interaction_timeout  can be configured as needed to customize the scan and analysis environment. Proper configuration ensures accurate scanning of private files and generation of comprehensive reports.
+3. On the TheHive side, configure the platform to connect to Cortex by specifying the Cortex server URL and API key. Verify that the connection is successful to ensure seamless communication between TheHive and Cortex.
+4. Once integrated, the “GTI Scan Private URL” analyzer should appear in TheHive’s list of available analyzers for the supported observable type: url.
+5. Analysts should be able to select a url observable within a case and retrieve the latest GTI threat intelligence information by running the analyzer. To do this:
+   1. Click the three-dot menu next to the observable.
+   2. Select “Run Analyzers”.
+   3. Choose “GTI_ScanPrivateURL_1_0”.
+   4. Click the “Run Selected Analyzer” button to execute the scan.
+6. The fetched report should be linked to the observable and displayed within TheHive’s interface. The report should include:
+   1. Summary of findings
+   2. URL GTI assessment
+   3. URL threat severity
+   4. URL Outgoing links
+   5. Additional information
+7. To ensure readability, a “GTI Scan Private URL” analyzer template must be uploaded in TheHive to define how the report content is rendered. TheHive should use this template to present the results in a clear, user-friendly format.
+8. If any execution errors occur, they should be captured and surfaced within the report to aid troubleshooting.
+________________
+Low Level - Technical Approach
+________________
+Configure Application
+How to use:
+1. On the TheHive platform, configure the integration by specifying the Cortex server URL and a valid Cortex API key. Validate the connection to ensure seamless communication between TheHive and Cortex.
+2. Ensure all GTI analyzer templates are fully configured and available in TheHive before any analyzer is run.
+3. Log into Cortex and navigate to “Organization”.
+4. Select “Analyzers Config” within the organization settings.
+5. Choose the desired GTI analyzer to edit and configure its specific parameters.
+6. Navigate to the “Analyzers” section and enable the configured analyzers.
+7. Configuration errors such as invalid API keys will not be immediately flagged during configuration. Instead, such errors surface when running the analyzer, with detailed error information displayed in the observable’s report within TheHive.
+8. Users can edit or update the configuration at any time by repeating the above procedure.
+
+
+GTI_GetReport
+Field name
+	Description
+	Default value
+	Required
+	Example
+	gti_api_key
+	Google Threat Intelligence api key to make api calls.
+	Empty
+	Yes
+	abcd1234
+	
+
+
+
+GTI_ScanFile
+Field name
+	Description
+	Default value
+	Required
+	Example
+	gti_api_key
+	Google Threat Intelligence api key to make api calls.
+	Empty
+	Yes
+	abcd1234
+	password
+	
+
+password to decompress and scan a file contained in a protected ZIP file.
+
+
+	Empty
+	No
+	sfdssf32
+	
+
+
+
+GTI_ScanPrivateFile
+Field name
+	Description
+	Default value
+	Required
+	Example
+	gti_api_key
+	Google Threat Intelligence api key to make api calls.
+	Empty
+	Yes
+	abcd1234
+	password
+	
+
+password to decompress and scan a file contained in a protected ZIP file.
+
+
+	Empty
+	No
+	sfdssf32
+	command_line
+	Command line arguments to use when running the file in sandboxes
+	Empty
+	No
+	Python temp.py
+	disable_sandbox
+	
+
+then the file won't be detonated in sandbox environments. False by default.
+
+
+	false
+	No
+	false
+	enable_internet
+	
+
+If the file should have internet access when running in sandboxes. False by default.
+
+
+	false
+	No
+	false
+	retention_period_days
+	
+
+number of days the report and file are kept in VT (between 1 and 28). If not set it defaults to the group's retention policy preference (1 day by default).
+
+
+	1
+	No
+	5
+	storage_region
+	
+
+storage region where the file will be stored. By default it uses the group's private_scanning.storage_region preference. Allowed values are US, CA, EU, GB
+
+
+	Empty
+	No
+	US
+	interaction_sandbox
+	
+
+Select the sandbox desired for interactive use.Allowed: cape_win, cape_linux
+
+
+	Empty
+	No
+	cape_linux
+	interaction_timeout
+	
+
+Interaction timeout in seconds, minimum value: 60. (1 minute.) Max value: 1800: (30 minutes)
+
+
+	60
+	No
+	100
+	locale
+	Preferred sandbox locale. On windows this selection will change the language and keyboard settings of the analysis machine.
+Allowed:EN_US , AR_SA, DE_DE, ES_ES, PT_BR
+	EN_US
+	No
+	EN_US
+	
+
+
+
+GTI_ScanURL
+Field name
+	Description
+	Default value
+	Required
+	Example
+	gti_api_key
+	Google Threat Intelligence api key to make api calls.
+	Empty
+	Yes
+	abcd1234
+	
+
+GTI_ScanPrivateURL
+Field name
+	Description
+	Default value
+	Required
+	Example
+	gti_api_key
+	Google Threat Intelligence api key to make api calls.
+	Empty
+	Yes
+	abcd1234
+	user_agent
+	User agent string.
+	Empty
+	No
+	abcd
+	sandboxes
+	
+
+Comma separated eg: chrome_headless_linux,cape_win,zenbox_windows possible values chrome_headless_linux, cape_win and zenbox_windows.
+
+
+	Empty
+	No
+	chrome_headless_linux
+	retention_period_days
+	
+
+number of days the report and file are kept in VT (between 1 and 28). If not set it defaults to the group's retention policy preference (1 day by default).
+
+
+	1
+	No
+	5
+	storage_region
+	storage region where the file will be stored. By default it uses the group's private_scanning.storage_region preference. Allowed values are US, CA, EU, GB
+	Empty
+	No
+	US
+	interaction_timeout
+	
+
+Interaction timeout in seconds, minimum value: 60. (1 minute.) Max value: 1800: (30 minutes)
+
+
+	60
+	No
+	100
+	
+
+User Action to GTI Get IOC Report
+On the TheHive platform, users can perform the “GTI Get IOC Report” action on any case observable of type IP, Domain, URL, or Hash to retrieve an enrichment report generated by the GTI platform. The resulting analysis is displayed within the observable’s report section in TheHive.
+
+
+How to use:
+1. Navigate to the Cases section from the main dashboard.
+2. Select any case to open its details.
+3. Go to the Observables tab to view all associated observables.
+4. Locate the observable of type IP, Domain, URL, or Hash, and click the three-dot menu in its row.
+5. Select “Run analyzers” from the dropdown menu.
+6. In the analyzer selection window, choose GTI_GetIOCReport_1_0.
+7. Click “Run Selected Analyzer” to execute.
+Implementation details:
+1. Verify that the “GTI Get IOC Report” analyzer(GTI_GetIOCReport_1_0)  is installed, properly configured, and enabled within the Cortex instance.
+2. This configuration is mandatory for analysis jobs to execute successfully upon trigger from TheHive
+3. The user selects an observable (type: IP, Domain, URL, or Hash) within TheHive and initiates the analysis by clicking Run Selected Analyzer, choosing “GTI_GetIOCReport_1_0”.
+4. TheHive sends a request to Cortex, launching an analyzer job with the observable context.
+5. Cortex runs a background script that:
+   1. Validates the analyzer’s configuration settings.
+   2. If configurations are invalid or incomplete, the job status is marked as Failed.
+6. In case of job failure, detailed error logs can be accessed via the job entry or the observable’s analysis report in TheHive.
+7. Upon successful configuration validation, the background script makes an API call to the GTI platform using the IOC value.
+8. GTI returns a threat enrichment report to Cortex.
+9. Cortex processes and incorporates this enrichment data into the analyzer output.
+10. Taxonomies are generated from the enrichment report to summarize key findings and threat attributes.
+11. After job completion, TheHive displays a concise summary report in the Observable Report section (e.g., GTI:GetReport="0/95").
+12. Users can click the summary to open the detailed, full report.The detailed “GTI Get Report” analyzer output includes:
+   1. Summary of findings
+   2. GTI assessment results
+   3. Scan results and verdicts
+   4. Threat severity evaluation
+   5. Relationships with other entities
+   6. Related artifacts and indicators
+   7. Additional context and supporting technical information
+User Action to GTI Scan File
+On the TheHive platform, users can perform the “GTI Scan File” action on any case observable of type File to retrieve a file scan report generated by the GTI platform. The resulting analysis is displayed within the observable’s report section in TheHive.
+
+
+How to use:
+1. Navigate to the Cases section from the main dashboard.
+2. Select any case to open its details.
+3. Go to the Observables tab to view all associated observables.
+4. Locate the observable type file and click the three-dot menu in its row.
+5. Select “Run analyzers” from the dropdown menu.
+6. In the analyzer selection window, choose “GTI_ScanFile_1_0”.
+7. Click “Run Selected Analyzer” to execute.
+Implementation details:
+1. Verify the “GTI Scan File” analyzer (GTI_ScanFile_1_0) is installed, properly configured, and enabled in the Cortex instance.
+2. Proper configuration is mandatory for analysis jobs to execute successfully when triggered from TheHive.
+3. The user selects an observable of type file within TheHive.
+4. The user initiates analysis by clicking “Run Selected Analyzer” and choosing the “GTI_ScanFile_1_0” analyzer.
+5. TheHive sends a request to Cortex to launch an analyzer job with the observable context.
+6. Cortex executes a background script that:
+   1. Validates the analyzer’s configuration settings.
+   2. Marks the job as Failed if configurations are invalid or incomplete.
+7. Failed jobs can be investigated by accessing detailed error logs via the job entry or observable’s analysis report in TheHive.
+8. Upon successful configuration validation, the background script makes an API call to the GTI platform to fetch a File Analysis Report ID based on the file’s hash values (SHA256/SHA1/MD5).
+9. If the response status from this API call is not 'completed' or 'finished', the script retries the request every 15 seconds.
+10. Once a completed status is received, a third API call fetches the comprehensive File Analysis Report using the received File Analysis Report ID.
+11. Cortex receives this report and processes the data into the analyzer output.
+12. Taxonomies are generated from the File Analysis Report to highlight key findings and threat attributes.
+13. Upon job completion, TheHive displays a concise summary report in the Observable Report section, for example: (GTI:ScanFile="0/95")
+14. Users can click this summary to open the detailed, full analyzer report for deeper investigation. The detailed analyzer report includes:
+   1. Summary of findings
+   2. File GTI assessment
+   3. File scan results
+   4. File threat severity
+   5. Additional information
+User Action to GTI Scan Private File
+On the TheHive platform, users can perform the “GTI Scan Private File” action on any case observable of type File to retrieve a private  file scan report generated by the GTI platform. The resulting analysis is displayed within the observable’s report section in TheHive.
+
+
+How to use:
+1. Navigate to the Cases section from the main dashboard.
+2. Select any case to open its details.
+3. Go to the Observables tab to view all associated observables.
+4. Locate the observable type file and click the three-dot menu in its row.
+5. Select “Run analyzers” from the dropdown menu.
+6. In the analyzer selection window, choose “GTI_ScanPrivateFile_1_0”.
+7. Click “Run Selected Analyzer” to execute.
+Implementation details:
+1. Verify the “GTI Scan Private File” analyzer (GTI_ScanPrivateFile_1_0) is installed, properly configured, and enabled in the Cortex instance.
+2. Proper configuration is mandatory for analysis jobs to execute successfully when triggered from TheHive.
+3. The user selects an observable of type file within TheHive.
+4. The user initiates analysis by clicking Run Selected Analyzer and choosing the GTI_ScanPrivateFile_1_0 analyzer.
+5. TheHive sends a request to Cortex to launch an analyzer job with the observable context.
+6. Cortex executes a background script that:
+   1. Validates the analyzer’s configuration settings.
+   2. Marks the job as Failed if configurations are invalid or incomplete.
+7. Failed jobs can be investigated by accessing detailed error logs via the job entry or observable’s analysis report in TheHive.
+8. Upon successful configuration validation, the background script makes an API call to the GTI platform to fetch a File Analysis Report ID based on the file’s hash values (SHA256/SHA1/MD5).
+9. If the response status from this API call is not 'completed' or 'finished', the script retries the request every 15 seconds.
+10. Once a completed status is received, a third API call fetches the comprehensive File Analysis Report using the received File Analysis Report ID.
+11. Cortex receives this report and processes the data into the analyzer output.
+12. Taxonomies are generated from the File Analysis Report to highlight key findings and threat attributes.
+13. Upon job completion, TheHive displays a concise summary report in the Observable Report section, for example: (GTI:ScanPrivateFile="0/95").
+14. Users can click this summary to open the detailed, full analyzer report for deeper investigation. The detailed analyzer report includes:
+   1. Summary of findings
+   2. File GTI assessment
+   3. File scan results
+   4. File threat severity
+   5. Additional information
+
+
+User Action to GTI Scan URL
+On the TheHive platform, users can perform the “GTI Scan URL” action on any case observable of type URL to retrieve a URL scan report generated by the GTI platform. The resulting analysis is displayed within the observable’s report section in TheHive.
+
+
+How to use:
+1. Navigate to the Cases section from the main dashboard.
+2. Select any case to open its details.
+3. Go to the Observables tab to view all associated observables.
+4. Locate the observable type URL and click the three-dot menu in its row.
+5. Select “Run analyzers” from the dropdown menu.
+6. In the analyzer selection window, choose GTI_ScanURL_1_0.
+7. Click “Run Selected Analyzer” to execute.
+Implementation details:
+1. Verify the “GTI Scan URL” analyzer (GTI_ScanURL_1_0) is installed, properly configured, and enabled in the Cortex instance.
+2. Proper configuration is mandatory for analysis jobs to execute successfully when triggered from TheHive.
+3. The user selects an observable of type URL within TheHive.
+4. The user initiates analysis by clicking Run Selected Analyzer and choosing the GTI_ScanURL_1_0 analyzer.
+5. TheHive sends a request to Cortex to launch an analyzer job with the observable context.
+6. Cortex executes a background script that:
+   1. Validates the analyzer’s configuration settings.
+   2. Marks the job as Failed if configurations are invalid or incomplete.
+7. Failed jobs can be investigated by accessing detailed error logs via the job entry or observable’s analysis report in TheHive.
+8. Upon successful configuration validation, the background script makes an API call to the GTI platform to fetch a URL Analysis Report ID based on the URL values.
+9. If the response status from this API call is not 'completed' or 'finished', the script retries the request every 15 seconds.
+10. Once a completed status is received, a third API call fetches the comprehensive File Analysis Report using the received URL Analysis Report ID.
+11. Cortex receives this report and processes the data into the analyzer output.
+12. Taxonomies are generated from the URL Analysis Report to highlight key findings and threat attributes.
+13. Upon job completion, TheHive displays a concise summary report in the Observable Report section, for example: (GTI:ScanURL="0/95")
+14. Users can click this summary to open the detailed, full analyzer report for deeper investigation. The detailed analyzer report includes:
+   1. Summary of findings
+   2. URL GTI assessment
+   3. URL scan results
+   4. URL threat severity
+   5. Additional information
+User Action to GTI Scan Private URL
+On the TheHive platform, users can perform the “GTI Scan Private URL” action on any case observable of type URL to retrieve a private URL scan report generated by the GTI platform. The resulting analysis is displayed within the observable’s report section in TheHive.
+
+
+How to use:
+1. Navigate to the Cases section from the main dashboard.
+2. Select any case to open its details.
+3. Go to the Observables tab to view all associated observables.
+4. Locate the observable type URL and click the three-dot menu in its row.
+5. Select “Run analyzers “from the dropdown menu.
+6. In the analyzer selection window, choose GTI_ScanPrivateURL_1_0.
+7. Click “Run Selected Analyzer” to execute.
+Implementation details:
+1. Verify the “GTI Scan Private File” analyzer (GTI_ScanPrivateURL_1_0) is installed, properly configured, and enabled in the Cortex instance.
+2. Proper configuration is mandatory for analysis jobs to execute successfully when triggered from TheHive.
+3. The user selects an observable of type URL within TheHive.
+4. The user initiates analysis by clicking Run Selected Analyzer and choosing the GTI_ScanPrivateURL_1_0 analyzer.
+5. TheHive sends a request to Cortex to launch an analyzer job with the observable context.
+6. Cortex executes a background script that:
+   1. Validates the analyzer’s configuration settings.
+   2. Marks the job as Failed if configurations are invalid or incomplete.
+7. Failed jobs can be investigated by accessing detailed error logs via the job entry or observable’s analysis report in TheHive.
+8. Upon successful configuration validation, the background script makes an API call to the GTI platform to fetch a URL Analysis Report ID based on the URL values.
+9. If the response status from this API call is not 'completed' or 'finished', the script retries the request every 15 seconds.
+10. Once a completed status is received, a third API call fetches the comprehensive File Analysis Report using the received URL Analysis Report ID.
+11. Cortex receives this report and processes the data into the analyzer output.
+12. Taxonomies are generated from the URL Analysis Report to highlight key findings and threat attributes.
+13. Upon job completion, TheHive displays a concise summary report in the Observable Report section, for example: (GTI:ScanPrivateURL="0/95")
+14. Users can click this summary to open the detailed, full analyzer report for deeper investigation. The detailed analyzer report includes:
+   1. Summary of findings
+   2. URL GTI assessment
+   3. URL scan results
+   4. URL threat severity
+   5. Additional information
+________________
+GTI API Information
+________________
+1. IOC Enrichment 
+        Get IOC Enrichment report from Google Threat Intelligence.
+API endpoint:
+* File: /files/{file_hash}
+* Ip_address : /ip_addresses/{ip_adddress}
+* Domain:/domains/{domain}
+* Url:/urls/{url}
+Method:  POST
+Params: relationships=collections,malware_families,related_threat_actors,software_toolkits,campaigns,comments,reports,vulnerabilities,resolutions
+Headers:  accept: application/json, Content-Type: application/json
+2. Scan Private URL
+        Scan private URL in Google Threat Intelligence.
+API endpoint: /private/urls
+Method:  POST
+Headers:  accept: application/json, Content-Type: application/json
+Body: { "url": "https://gti.com" }
+3. Get Private URL Report
+Get Private URL Report from Google Threat Intelligence.
+API endpoint: /private/urls/{id}
+Method:  GET
+Headers:  accept: application/json, Content-Type: application/json
+4. Scan URL
+Scan URL in Google Threat Intelligence.
+API endpoint: /urls/{urls}
+Method:  POST
+Headers:  accept: application/json, Content-Type: application/json
+Body: { "url": "https://gti.com" }
+5. Get URL Report
+Upload URL Report from Google Threat Intelligence.
+API endpoint: /urls/{id}
+Method:  GET
+Headers:  accept: application/json, Content-Type: application/json
+6. Scan Private Files
+        Scan private files in  Google Threat Intelligence.
+API endpoint: /private/files
+Method:  POST
+Headers:  accept: application/json
+7. Get Private File Report
+Get Private File Report from Google Threat Intelligence.
+API endpoint: /private/files/{file_sha256_hash}
+Method:  GET
+Headers:  accept: application/json, Content-Type: application/json
+8. Get Private Analysis
+Get Private Analysis from Google Threat Intelligence.
+API endpoint: /private/analyses/{id}
+Method:  GET
+Headers:  accept: application/json, Content-Type: application/json
+9. Upload File
+Upload File to Google Threat Intelligence.
+API endpoint: /files
+Method:  POST
+Headers:  accept: application/json
+10. Scan File
+Scan file in Google Threat Intelligence.
+API endpoint: /files/{files}
+Method:  POST
+Headers:  accept: application/json
+11. Get File Report
+Get File Report from Google Threat Intelligence.
+API endpoint: /files/{id}
+Method:  GET
+Headers:  accept: application/json, Content-Type: application/json
+12. Get Analysis
+Get Analysis from Google Threat Intelligence.
+API endpoint: /analyses/{id}
+Method:  GET
+Headers:  accept: application/json, Content-Type: application/json
+________________
+Limitations
+________________
+1. TheHive does not support automatic observable enrichment; users must manually trigger analyzers for each observable.
+2. Cortex analyzers run in containers which may face CPU, memory, or disk limitations especially under high workload or large-scale deployments.
+3. High volume of concurrent analyzer jobs can cause timeouts, job queue delays, or heavy load on Cortex servers.
+4. Configuration errors (like invalid API keys) surface only at run-time, not at configuration time.
+5. Only admin users with "managePlatform" permission can configure Cortex connections.
+6. Password and API key fields are currently displayed in clear text in the analyzer configuration modal/UI instead of being masked with dots or asterisks. We also raised this concern with TheHive team, and they informed us that they have submitted a feature request to anonymize these fields in a future update.
+
+
+Known Issues
+________________
+TBD
+
+
+Troubleshooting
+________________
+1. Analyzer Not Detected in Cortex
+   1. Custom analyzer missing from UI after refresh.
+   2. Verify dataTypeList matches TheHive types (e.g., ["url", "hash"]). Add the analyzer path to /etc/cortex/application.conf under cortex.analyzers.basePaths = ["/opt/analyzers"]. Restart Cortex (systemctl restart cortex) and refresh in UI as orgadmin.
+2. Missing or Invalid Config Items
+   1. UI prompts for configs but fails validation; errors like "Required field missing."
+   2. Define configurationItems array in flavor JSON with name, type (string/number), required: true, and multi: false (or true for lists). Test with invalid inputs to ensure failure JSON is output.
+3. Multi-Config Handling
+   1. Errors when passing non-list values to multi-configs (e.g., API keys as array).
+   2. Set multi: true only if expecting lists; validate in code (e.g., if not isinstance(config['key'], list): return failure).
+4. Blank or Raw JSON Reports
+   1. Short/long reports show unformatted data or nothing.
+   2. Use AngularJS for dynamic content (e.g., <div ng-if="success">{{content.full.message}}</div>). Handle errors: <div ng-if="!success">{{content.errorMessage}}</div>. Test in TheHive by running the analyzer on a case.
+5. Taxonomy Display Errors
+   1. No colors/icons in short reports; predicates like "Score" not showing.
+   2. In output summary.taxonomies, use valid levels ("info"/blue, "safe"/green, "suspicious"/orange, "malicious"/red). Example: [{"namespace": "GTI", "predicate": "ThreatLevel", "value": "High", "level": "malicious"}]. Build with cortexutils.build_taxonomy().
