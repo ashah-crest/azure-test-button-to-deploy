@@ -1,0 +1,242 @@
+﻿1. Problem Statement        2
+2. Current Workflow (Manual)        2
+3. Proposed Solution        3
+3.1 Broader Design        3
+3.2 Architecture        4
+3.3 Execution Plan        5
+4. Impact        6
+5. Testing Strategy        6
+6. Enhancements and Reusability        7
+7. Assets/References        7
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Field
+	Details
+	Project / Agent Name
+	Proposal Feasibility Intelligence
+	Owner(s)
+	Anish Jain / Abhi Shah
+	Team Member (s)
+	Anish Jain, Abhi Shah, Avadh Sonagra, Parth Malavia, Vaibhav Gohil
+	Status
+	In Progress
+	Last Updated
+	07 May
+	Version
+	v1.0
+	
+
+
+
+1. Problem Statement
+Building GTI Integrations in a target product involves analysing and understanding a new platform and feasibility check of third party development that is slow, inconsistent, and relies entirely on individual memory/capabilities.
+2. Current Workflow (Manual)
+1. Gather product information and understand its end-user workflows, features, and primary use cases.
+2. Identify product features that can leverage GTI capabilities or be enhanced through GTI integrations.
+3. Verify whether the product supports external integrations/plugins and check for an official marketplace or installation mechanism for end users.
+4. Search for publicly available documentation, SDKs, APIs, or developer guides required for third-party integration development.
+5. If public development resources are unavailable, check for partner programs or vendor-supported integration models. If required, initiate communication with the team for further integration details and enablement.
+6. Analyze the publishing and deployment process for the developed integration, if supported by the platform.
+7. Prepare a feasibility and integration analysis document covering all collected findings and recommendations.
+3. Proposed Solution
+3.1 Broader Design
+
+
+An AI agent that takes a product name as input and produces a complete, near-final integration proposal draft with feasibility as output, grounded in the team's own institutional knowledge, past decisions, and GTI's current capability surface.        
+Context Engine
+This serves as the centralized repository for GTI integration knowledge built using Kapa.ai. The knowledge base is further divided into 3 categories.
+1. GTI Capabilities & APIs
+* This set of corpus represents all the GTI capabilities along with the APIs available to utilize those capabilities.
+2. Integration Proposals
+* This set of corpus includes all the Integration Proposals along with their approved or rejected status and supporting rejection reasons and limitations
+3. Integration Knowledge
+* This set of corpus represents the GTI Integrations that have been either released or are currently being implemented by the team.
+All this information available is converted into structured markdown files before being loaded into the knowledge base.Compiling the content into markdown will help improve indexing, semantic search accuracy, and contextual retrieval within the RAG pipeline.
+The overall workflow consists of the following modules:
+* Platform Research Module
+The workflow starts when a user provides the name of a target platform or product. This module performs external research using web search APIs and gathers publicly available information such as platform capabilities, APIs, authentication methods, supported integrations, SDKs, webhook/event support, and developer documentation. The output of this module is a refined platform profile that summarizes the key technical details required for integration analysis.
+* Platform Profile Module
+Once the external platform profile is prepared, this module queries the Kapa AI knowledge base to retrieve relevant GTI context. Using semantic search, it will help identify matching GTI capabilities, APIs, similar integrations already built, related architectural patterns, and historical proposals that will help accelerate the implementation. 
+* Prompt Assembler Module
+This module combines the external platform research with the retrieved internal GTI knowledge into a structured prompt for the LLM. The prompt is organized to provide both business and technical context, enabling the LLM to generate more accurate and relevant outputs.
+* Proposal Generation (LLM Output)
+The assembled prompt is passed to the LLM, which will generate a draft integration proposal document. The proposal will include:
+   * Integration overview and feasibility
+   * Suggested integration approach
+   * Relevant GTI capabilities and APIs
+   * Reusable components or existing patterns
+   * Authentication and data flow 
+   * Risks, dependencies, and assumptions
+   * Recommended next steps for implementation
+3.2 Architecture
+  
+
+
+
+________________
+3.3 Execution Plan
+Phase
+	Description
+	Status
+	Exit Criteria
+	P-1 T-1
+	Prepare a knowledge base:
+
+
+1. GTI capabilities:
+- Document all the GTI modules alongside their respective API doc.
+
+
+2. Past proposals:
+- Convert all the past proposals to standard format. Including approved, rejected, and backlogged.
+
+
+3. Development approach:
+- For all the approved proposals, convert all the TDDs to standard format having development and publish in flow, blockers, lesson learned.
+	In Progress
+	All identified GTI capability documents, past proposals, and existing integration records are standardized in markdown format and ready for ingestion into the knowledge base.
+	P-1 T-2
+	Ingest the prepared knowledge base to Kapa AI. 
+	Not Started
+	Validate retrieval quality using 30 test queries across all three corpora
+	P-2 T-1
+	Platform researcher module
+- Retrieve product details using websearch integration
+- Prepare product product profile using product details and LLM
+	Not Started
+	Created profile should include Its supported features, targeted users, product type, supported integration model and marketplace details.
+	P-2 T-2
+	Knowledge retriever module
+- Integrate with Kapa retrieval API
+- Get the related GTI capabilities, approved proposals, rejection patterns, integration lessons, similar products from Kapa
+	Not Started
+	Validate retrieval returns correct corpus content per query type
+	P-2 T-3
+	Prompt assembler module
+- Develop the prompt assembler module including system prompts, proposal templates, and logic to combine platform research with retrieved knowledge for proposal generation.
+	Not Started
+	Produces complete, structured, and version-controlled inputs for proposal generation
+	P-2 T-4
+	Generator module
+- Integrate the LLM API and implement proposal generation workflows, file output handling.
+- Log token and cost metrics for each execution
+	Not Started
+	Successfully produces formatted proposal doc without crashing and hallucination.
+	P-2 T-5
+	End-to-end evaluation
+- Run the complete pipeline against 10 different products (SEIM, SOAR, EDR) and score output on accuracy of each section.
+- Iterate prompt until quality bar is consistently met
+	Not Started
+	Generated doc should be ready to share with minimal manual changes.
+	
+
+4. Impact
+
+
+Stage
+	Traditional
+	With Agent 
+	Analysis
+	1-2 Days
+	~5 Min.
+	Product Profile
+	1-2 Days
+	~3 Min.
+	Feasibility 
+	1-2 Days
+	~5 Min.
+	Proposal Document
+	0-1 Days
+	~5 Min.
+	Overall
+	3-7 Days
+	1-2 Day (Including Human Validation)
+	
+
+
+
+5. Testing Strategy
+
+
+Testing Strategy:
+
+
+   * Retrieval quality
+   * Minimum 70% of top-5 results rated relevant or partially relevant per corpus. No individual corpus below 60%.
+   * Agent correctness
+   * Agent tested against 10 real product names spanning SIEM, SOAR, EDR, and email gateway categories. 
+   * Output quality
+   * Team review of generated proposals scores at least 7/10 average across: use case relevance, endpoint accuracy, SOC journey narrative quality, and proposal structure adherence. 
+   * Reliability 
+   * Agent produces output for 100% of test inputs - no crashes, no empty outputs, no hallucinated endpoints. Prompt version committed to repo with evaluation scores attached.
+   * Groundedness
+   * All GTI endpoint names and rate limits in generated proposals are traceable to Corpus A. No API detail in any output that is absent from the knowledge base.
+
+
+
+
+
+
+Exit Criteria:
+
+
+   * Use this tool for all the next set of proposals to be prepared for GTI integrations.
+   * It should reduce the time spent by almost 80-90% on proposal and feasibility analysis.
+
+
+
+
+6. Enhancements and Reusability
+   * AI Agent’s GTI and Integrations context can help us generate boiler code and speed up the implementation.
+   * AI Agent can be further extended to crawl new GTI features and suggest enhancements within the existing integrations as well as help explore the next set of products to scope.
+   * Reusability:
+   * The prepared context engine/knowledge base workflow can be reused for preparing similar KB for other products like GTI.
+   * This agent workflow can be used for preparing similar feasibility/proposal documents for security products and new customers.
+
+
+7. Assets/References
+   * https://www.kapa.ai/
+   * https://gtidocs.virustotal.com/reference/api-overview
+   * AI Initiative
