@@ -30,9 +30,9 @@ load_dotenv()
 
 # ── Clients ──────────────────────────────────────────────────────────────────
 
-firecrawl = FirecrawlApp(api_key="fc-9368f5ae5efc46cdbf74e4fa53fc1046")
+firecrawl = FirecrawlApp(api_key="")
 
-genai.configure(api_key="AIzaSyDRZJW-jkapEjdDElmVunifeV4r3D1S_Iw")
+genai.configure(api_key="")
 gemini = genai.GenerativeModel(
     model_name="gemini-2.5-flash",
     generation_config=genai.GenerationConfig(
